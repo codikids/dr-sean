@@ -79,6 +79,12 @@ export async function handleDashboardAPI(request, env, path) {
       return json({ ok: true }, 200, cors);
     }
 
+    // POST /api/instagram/refresh — 인스타 캐시 삭제
+    if (path === '/api/instagram/refresh' && request.method === 'POST') {
+      await env.KV.delete('cache:ig_stats');
+      return json({ ok: true }, 200, cors);
+    }
+
     // GET /api/logs — DM 로그 조회
     if (path === '/api/logs' && request.method === 'GET') {
       const logs = await getRecentLogs(env);
@@ -208,16 +214,18 @@ async function getInstagramStats(env) {
       stats.name = p.name || '';
       stats.profilePic = p.profile_picture_url || '';
     }
-    // 최근 게시물 + 좋아요/댓글
-    const mediaRes = await fetch(
-      `https://graph.instagram.com/v21.0/me/media?fields=id,caption,like_count,comments_count,timestamp,media_type,thumbnail_url,media_url&limit=50`,
-      { headers: { 'Authorization': `Bearer ${token}` } }
-    );
-    if (mediaRes.ok) {
+    // 전체 게시물 (페이지네이션으로 모두 가져오기)
+    let allPosts = [];
+    let nextUrl = `https://graph.instagram.com/v21.0/me/media?fields=id,caption,like_count,comments_count,timestamp,media_type,thumbnail_url,media_url&limit=200`;
+    while (nextUrl && allPosts.length < 500) {
+      const mediaRes = await fetch(nextUrl, { headers: { 'Authorization': `Bearer ${token}` } });
+      if (!mediaRes.ok) break;
       const m = await mediaRes.json();
-      // 최근 30일 게시물만 필터
-      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-      const recentPosts = (m.data || []).filter(p => p.timestamp >= thirtyDaysAgo);
+      allPosts = allPosts.concat(m.data || []);
+      nextUrl = m.paging?.next || null;
+    }
+    if (allPosts.length) {
+      const recentPosts = allPosts;
       // 각 게시물별로 인사이트(조회수) 가져오기
       const postsWithInsights = await Promise.all(recentPosts.map(async (p) => {
         let views = 0;

@@ -351,8 +351,8 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
   <button class="nav-item" onclick="switchTab('logs',this)" style="flex-direction:row;gap:6px;padding:8px 16px;">
     <span class="nav-label" style="font-size:13px;">Logs</span>
   </button>
-  <button class="nav-item" onclick="switchTab('keywords',this)" style="flex-direction:row;gap:6px;padding:8px 16px;">
-    <span class="nav-label" style="font-size:13px;">Keywords</span>
+  <button class="nav-item" onclick="switchTab('insights',this)" style="flex-direction:row;gap:6px;padding:8px 16px;">
+    <span class="nav-label" style="font-size:13px;">Insights</span>
   </button>
   <button class="nav-item" onclick="switchTab('settings',this)" style="flex-direction:row;gap:6px;padding:8px 16px;">
     <span class="nav-label" style="font-size:13px;">Settings</span>
@@ -375,31 +375,17 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
       </div>
     </div>
 
-    <!-- Quick Actions -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
-      <button onclick="switchTab('analytics',document.querySelectorAll('.nav-item')[1])" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;cursor:pointer;text-align:left;transition:all 0.15s;">
-        <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:2px;">DM Analytics</div>
-        <div style="font-size:20px;font-weight:800;color:var(--text);" id="quickDMs">-</div>
-        <div style="font-size:10px;color:var(--text-tertiary);margin-top:2px;">Total conversations</div>
-      </button>
-      <button onclick="switchTab('logs',document.querySelectorAll('.nav-item')[2])" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;cursor:pointer;text-align:left;transition:all 0.15s;">
-        <div style="font-size:12px;font-weight:700;color:var(--green);margin-bottom:2px;">Today's DMs</div>
-        <div style="font-size:20px;font-weight:800;color:var(--text);" id="quickToday">-</div>
-        <div style="font-size:10px;color:var(--text-tertiary);margin-top:2px;">View all logs</div>
-      </button>
-    </div>
-
     <!-- Stats -->
     <div class="stat-grid stat-grid-4">
-      <div class="stat-card"><div class="stat-label">Followers</div><div class="stat-value" id="statFollowers">-</div></div>
-      <div class="stat-card"><div class="stat-label">Posts</div><div class="stat-value" id="statPosts">-</div></div>
-      <div class="stat-card"><div class="stat-label">Likes</div><div class="stat-value" id="statLikes">-</div><div class="stat-sub">Last 30 days</div></div>
-      <div class="stat-card"><div class="stat-label">Comments</div><div class="stat-value" id="statComments">-</div><div class="stat-sub">Last 30 days</div></div>
+      <div class="stat-card"><div class="stat-label" style="color:var(--accent);">Followers</div><div class="stat-value" id="statFollowers">-</div></div>
+      <div class="stat-card"><div class="stat-label" style="color:var(--green);">Posts</div><div class="stat-value" id="statPosts">-</div></div>
+      <div class="stat-card"><div class="stat-label">Likes</div><div class="stat-value" id="statLikes">-</div><div class="stat-sub">All posts</div></div>
+      <div class="stat-card"><div class="stat-label">Comments</div><div class="stat-value" id="statComments">-</div><div class="stat-sub">All posts</div></div>
     </div>
 
     <div class="stat-grid stat-grid-4">
-      <div class="stat-card"><div class="stat-label">Views</div><div class="stat-value" id="statViews">-</div><div class="stat-sub">Last 30 days</div></div>
-      <div class="stat-card"><div class="stat-label">Eng. Rate</div><div class="stat-value" id="statEngRate">-</div><div class="stat-sub">Likes+Comments / Followers</div></div>
+      <div class="stat-card"><div class="stat-label">Views</div><div class="stat-value" id="statViews">-</div><div class="stat-sub">All posts</div></div>
+      <div class="stat-card"><div class="stat-label">Eng. Rate</div><div class="stat-value" id="statEngRate">-</div><div class="stat-sub">Avg per post</div></div>
     </div>
 
     <!-- Bot Performance -->
@@ -407,7 +393,7 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
 
     <!-- Chart -->
     <div class="chart-card">
-      <div class="card-header">Post Engagement — Last 30 Days</div>
+      <div class="card-header">Post Engagement — All Posts</div>
       <div class="chart-wrap chart-wrap-lg"><canvas id="chartEngagement"></canvas></div>
     </div>
   </div>
@@ -613,24 +599,20 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
   </div>
 
   <!-- KEYWORDS -->
-  <div class="section" id="sec-keywords">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+  <!-- INSIGHTS -->
+  <div class="section" id="sec-insights">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+      <div style="width:32px;height:32px;border-radius:10px;background:rgba(169,132,255,0.12);display:flex;align-items:center;justify-content:center;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A984FF" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+      </div>
       <div>
-        <div style="font-size:16px;font-weight:700;letter-spacing:-0.2px;">Keyword Rules</div>
-        <div style="font-size:12px;color:var(--text-tertiary);margin-top:2px;">When a keyword is detected in a DM, a fixed reply is sent instead of AI.</div>
-      </div>
-      <span class="kw-count" id="kwCount">0 rules</span>
-    </div>
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:12px;">
-      <div style="font-size:11px;color:var(--text-tertiary);font-weight:600;margin-bottom:6px;">HOW IT WORKS</div>
-      <div style="font-size:12px;color:var(--text-secondary);line-height:1.6;">
-        User sends: <span style="color:var(--accent);">"How much is botox?"</span><br>
-        Keyword <span style="background:var(--accent-soft);color:var(--accent);padding:1px 6px;border-radius:4px;font-size:11px;font-weight:600;">price</span> detected → fixed reply sent instantly (no AI cost)
+        <div style="font-size:16px;font-weight:700;letter-spacing:-0.2px;">AI Insights</div>
+        <div style="font-size:11px;color:var(--text-tertiary);">Powered by your DM data</div>
       </div>
     </div>
-    <div id="kwList"></div>
-    <button class="kw-add" onclick="addKeyword()" style="margin-top:4px;">+ Add Keyword Rule</button>
-    <button class="btn-save-card" onclick="saveConfig()" style="width:100%;margin-top:12px;">Save</button>
+    <div id="insightsContent" style="display:flex;flex-direction:column;gap:10px;">
+      <div style="text-align:center;padding:40px;color:var(--text-tertiary);">Loading insights...</div>
+    </div>
   </div>
 
   <!-- LOGS -->
@@ -705,7 +687,7 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
       <div class="modal-section">
         <div class="modal-section-title">Direct Reply</div>
         <div style="display:flex;gap:8px;">
-          <input class="reply-input" id="modalReplyInput" placeholder="Type a message...">
+          <textarea class="reply-input" id="modalReplyInput" placeholder="Type a message..." rows="1" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px';" style="resize:none;overflow:hidden;min-height:38px;"></textarea>
           <button class="reply-send" onclick="sendModalReply()">Send</button>
         </div>
       </div>
@@ -727,9 +709,9 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
     <span class="nav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span>
     <span class="nav-label">Logs</span>
   </button>
-  <button class="nav-item" onclick="switchTab('keywords',this)">
-    <span class="nav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></span>
-    <span class="nav-label">Keywords</span>
+  <button class="nav-item" onclick="switchTab('insights',this)">
+    <span class="nav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></span>
+    <span class="nav-label">Insights</span>
   </button>
   <button class="nav-item" onclick="switchTab('settings',this)">
     <span class="nav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></span>
@@ -820,6 +802,7 @@ function switchTab(name, el) {
   if(name==='home') loadHome();
   if(name==='analytics') loadAnalytics();
   if(name==='logs') loadLogs();
+  if(name==='insights') loadInsights();
 }
 
 // ── Error banner helper ──
@@ -858,10 +841,6 @@ async function loadHome(){
   try{
     const lr=await fetch('/api/logs');const logs=await lr.json();
     if(Array.isArray(logs)){
-      document.getElementById('quickDMs').textContent=logs.length;
-      const td=new Date().toISOString().split('T')[0];
-      document.getElementById('quickToday').textContent=logs.filter(l=>(l.createdAt||'').startsWith(td)).length;
-
       // Bot Performance card
       const bp=document.getElementById('botPerformance');
       if(bp && config.botStartDate){
@@ -1119,6 +1098,117 @@ function rmCR(i){config.commentRules.splice(i,1);renderCommentRules();}
 
 // ── Logs ──
 let allLogs=[],filteredLogs=[],lp=0;const LPP=10;
+// ── Insights ──
+async function loadInsights(){
+  const el=document.getElementById('insightsContent');
+  try{
+    const lr=await fetch('/api/logs');const logs=await lr.json();
+    if(!Array.isArray(logs)||!logs.length){el.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-tertiary);">Not enough data yet. Insights will appear as DMs come in.</div>';return;}
+
+    // 미팔로우 체크
+    const nfCheck={};
+    logs.forEach(l=>{const k=l.username||'';if(!k)return;if(!(k in nfCheck))nfCheck[k]=true;if(!(l.replied||'').includes('[Follow request - not following]'))nfCheck[k]=false;});
+    const activeLogs=logs.filter(l=>!nfCheck[l.username||'']);
+
+    // 데이터 집계
+    const users=new Set(activeLogs.map(l=>l.username).filter(Boolean));
+    const concerns={},countries={};
+    activeLogs.forEach(l=>{
+      const t=l.tag;
+      if(t&&t!=='stuck'&&t!=='paused'&&t!=='direct'&&t!=='consultation')concerns[t]=(concerns[t]||0)+1;
+      const c=cleanC(l.country);if(c)countries[c]=(countries[c]||0)+1;
+    });
+    const topConcerns=Object.entries(concerns).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    const topCountries=Object.entries(countries).sort((a,b)=>b[1]-a[1]).slice(0,5);
+
+    // 퍼널 계산
+    const stages={follow:0,stuck:0,interest:0,consulted:0};
+    const userLogs={};
+    activeLogs.forEach(l=>{const k=l.username||'';if(!k)return;if(!userLogs[k])userLogs[k]=[];userLogs[k].push(l);});
+    Object.entries(userLogs).forEach(([k,ul])=>{
+      const country=ul.find(l=>cleanC(l.country))?.country||'';
+      const stage=getUserStage(ul,country);
+      stages[stage]++;
+    });
+    const totalFunnel=stages.follow+stages.stuck+stages.interest+stages.consulted;
+    const convRate=totalFunnel>0?Math.round(stages.consulted/totalFunnel*100):0;
+    const stuckRate=totalFunnel>0?Math.round(stages.stuck/totalFunnel*100):0;
+
+    // Booking intent
+    const bookKw=['book','appointment','schedule','reserve','i want to come','i want to visit','planning to come','planning to visit','fly to korea','travel to korea'];
+    const bookedIntent=new Set(activeLogs.filter(l=>bookKw.some(k=>(l.received||'').toLowerCase().includes(k))).map(l=>l.username)).size;
+
+    // 시간대 분석
+    const hours={};
+    activeLogs.forEach(l=>{if(l.createdAt){const h=new Date(l.createdAt).getUTCHours();hours[h]=(hours[h]||0)+1;}});
+    const peakHour=Object.entries(hours).sort((a,b)=>b[1]-a[1])[0];
+
+    // AI 스타일 인사이트 카드 생성
+    const cards=[];
+
+    // 1. 요약
+    cards.push('<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;">'+
+      '<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A984FF" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg><span style="font-size:11px;font-weight:700;color:#A984FF;text-transform:uppercase;">Overview</span></div>'+
+      '<div style="font-size:13px;color:var(--text-secondary);line-height:1.7;">'+
+      'You have <b style="color:var(--text);">'+users.size+' patients</b> in your funnel. '+
+      '<b style="color:var(--green);">'+convRate+'%</b> have reached the consultation stage. '+
+      (stuckRate>20?'<span style="color:var(--amber);">'+stuckRate+'% are stuck in the country selection — consider simplifying the flow.</span> ':'')+
+      (bookedIntent>0?bookedIntent+' patient'+(bookedIntent>1?'s':'')+' have expressed <b style="color:#E879F9;">booking intent</b>. ':'')+
+      '</div></div>');
+
+    // 2. Top Concerns
+    if(topConcerns.length){
+      cards.push('<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;">'+
+        '<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span style="font-size:11px;font-weight:700;color:var(--cyan);text-transform:uppercase;">Top Concerns</span></div>'+
+        '<div style="font-size:13px;color:var(--text-secondary);line-height:1.7;">'+
+        'The most asked-about treatments are: '+topConcerns.map(([t,c])=>'<span class="badge badge-tag" style="margin:0 2px;">'+esc(t)+'</span> ('+c+')').join(', ')+'. '+
+        (topConcerns[0]?'<b style="color:var(--text);">'+esc(topConcerns[0][0])+'</b> leads with '+topConcerns[0][1]+' inquiries.':'')+
+        '</div></div>');
+    }
+
+    // 3. Country Distribution
+    if(topCountries.length){
+      cards.push('<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;">'+
+        '<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg><span style="font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase;">Patient Geography</span></div>'+
+        '<div style="font-size:13px;color:var(--text-secondary);line-height:1.7;">'+
+        'Your patients come from <b style="color:var(--text);">'+Object.keys(countries).length+' countries</b>. '+
+        'Top regions: '+topCountries.map(([c,n])=>esc(c)+' ('+n+')').join(', ')+'. '+
+        '</div></div>');
+    }
+
+    // 4. Funnel Health
+    cards.push('<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;">'+
+      '<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2" stroke-linecap="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg><span style="font-size:11px;font-weight:700;color:var(--amber);text-transform:uppercase;">Funnel Health</span></div>'+
+      '<div style="font-size:13px;color:var(--text-secondary);line-height:1.7;">'+
+      '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px;">'+
+      '<span>Follow <b style="color:var(--red);">'+stages.follow+'</b></span>'+
+      '<span>Stuck <b style="color:var(--amber);">'+stages.stuck+'</b></span>'+
+      '<span>Interest <b style="color:var(--cyan);">'+stages.interest+'</b></span>'+
+      '<span>Consulted <b style="color:var(--green);">'+stages.consulted+'</b></span>'+
+      '</div>'+
+      (stages.stuck>0?'<span style="color:var(--amber);">⚠ '+stages.stuck+' patient'+(stages.stuck>1?'s are':' is')+' stuck.</span> Consider reaching out directly. ':'')+
+      'Consultation rate: <b style="color:var(--green);">'+convRate+'%</b>'+
+      '</div></div>');
+
+    // 5. Peak Activity
+    if(peakHour){
+      const h=parseInt(peakHour[0]);
+      const timeStr=(h%12||12)+(h<12?'AM':'PM');
+      cards.push('<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;">'+
+        '<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;">Peak Activity</span></div>'+
+        '<div style="font-size:13px;color:var(--text-secondary);line-height:1.7;">'+
+        'Most DMs arrive around <b style="color:var(--text);">'+timeStr+' UTC</b>. '+
+        'This is when your audience is most active — ideal time for posting content.'+
+        '</div></div>');
+    }
+
+    el.innerHTML=cards.join('');
+  }catch(e){
+    console.error('loadInsights error:',e);
+    el.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-tertiary);">Failed to load insights.</div>';
+  }
+}
+
 async function loadLogs(){
   try{
     await loadPatientData();
@@ -1151,7 +1241,10 @@ function renderTodaySummary(logs){
   const el=document.getElementById('todaySummary');if(!el)return;
   const today=new Date().toISOString().split('T')[0];
   const todayLogs=logs.filter(l=>(l.createdAt||'').startsWith(today));
-  const unreviewed=logs.filter(l=>!l.reviewed).length;
+  // Unreviewed: 고객 단위 (한 명이라도 unreviewed 로그가 있으면 1명)
+  const unreviewedUsers=new Set();
+  logs.forEach(l=>{if(!l.reviewed){const k=l.username||l.senderId||'';if(k)unreviewedUsers.add(k);}});
+  const unreviewed=unreviewedUsers.size;
   // 퍼널 — 계정 기준 (중복 제거)
   const userMap={},userAllNotFollow={};
   logs.forEach(l=>{
