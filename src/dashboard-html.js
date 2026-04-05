@@ -190,6 +190,47 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
   .log-time-relative { color:var(--accent); font-size:10px; font-weight:600; }
   .log-no-country { opacity:0.6; }
 
+  /* ── Review/Actions ── */
+  .log-actions { display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; align-items:center; }
+  .log-action-btn { background:var(--surface-2); border:1px solid var(--border); color:var(--text-tertiary); padding:5px 10px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:600; font-family:'Inter',sans-serif; transition:all 0.15s; display:flex; align-items:center; gap:4px; }
+  .log-action-btn:hover { border-color:var(--border-hover); color:var(--text); }
+  .log-action-btn.active { background:var(--green-soft); border-color:var(--green); color:var(--green); }
+  .log-item.reviewed { border-left:3px solid var(--green); }
+  .log-item.unreviewed { border-left:3px solid var(--amber); }
+  .badge-vip { background:rgba(245,158,11,0.15); color:#F0B24A; }
+  .badge-paused { background:var(--red-soft); color:var(--red); }
+  .badge-direct { background:rgba(167,139,250,0.12); color:var(--purple); }
+  .badge-stuck { background:var(--red-soft); color:var(--red); }
+  .badge-paused-tag { background:rgba(240,178,74,0.12); color:var(--amber); }
+
+  /* ── Patient Modal ── */
+  .modal-overlay { position:fixed; inset:0; z-index:100; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px); display:none; align-items:center; justify-content:center; padding:16px; }
+  .modal-overlay.show { display:flex; }
+  .modal { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); max-width:500px; width:100%; max-height:85vh; overflow-y:auto; }
+  .modal-header { display:flex; align-items:center; justify-content:space-between; padding:16px 18px; border-bottom:1px solid var(--border); position:sticky; top:0; background:var(--surface); z-index:1; }
+  .modal-header h3 { font-size:15px; font-weight:700; }
+  .modal-close { width:36px; height:36px; border-radius:8px; border:1px solid var(--border); background:none; color:var(--text-tertiary); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:16px; }
+  .modal-body { padding:16px 18px; }
+  .modal-section { margin-bottom:16px; }
+  .modal-section-title { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-tertiary); margin-bottom:8px; }
+
+  /* ── Reply Box ── */
+  .reply-box { display:none; margin-top:8px; }
+  .reply-box.show { display:flex; gap:8px; }
+  .reply-input { flex:1; padding:10px 12px; background:var(--bg); border:1.5px solid var(--border); border-radius:var(--radius-sm); color:var(--text); font-size:14px; font-family:'Inter',sans-serif; outline:none; }
+  .reply-input:focus { border-color:var(--accent); }
+  .reply-send { background:var(--accent); color:#fff; border:none; padding:10px 16px; border-radius:var(--radius-sm); font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap; }
+
+  /* ── Today Summary ── */
+  .summary-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin-bottom:12px; }
+  .summary-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); padding:12px; }
+  .summary-card .stat-label { margin-bottom:4px; }
+  .summary-card .stat-value { font-size:18px; }
+  .funnel-tip { position:absolute; bottom:calc(100% + 8px); left:50%; transform:translateX(-50%); background:var(--surface-3); color:var(--text); padding:8px 12px; border-radius:8px; font-size:11px; font-weight:500; line-height:1.4; white-space:nowrap; box-shadow:var(--shadow-lg); z-index:10; pointer-events:none; opacity:0; transition:opacity 0.2s; }
+  .funnel-tip.show { opacity:1; }
+  .funnel-tip::after { content:''; position:absolute; top:100%; left:50%; transform:translateX(-50%); border:5px solid transparent; border-top-color:var(--surface-3); }
+  .funnel-item:hover { background:var(--surface) !important; }
+
   /* ── Toast ── */
   .toast {
     position:fixed; top:20px; left:50%; transform:translateX(-50%); z-index:100;
@@ -356,6 +397,9 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
       <div class="stat-card"><div class="stat-label">Eng. Rate</div><div class="stat-value" id="statEngRate">-</div><div class="stat-sub">Likes+Comments / Followers</div></div>
     </div>
 
+    <!-- Bot Performance -->
+    <div id="botPerformance"></div>
+
     <!-- Chart -->
     <div class="chart-card">
       <div class="card-header">Post Engagement — Last 30 Days</div>
@@ -396,8 +440,23 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
   <!-- SETTINGS -->
   <div class="section" id="sec-settings">
 
+    <!-- Bot Performance -->
+    <div class="setting-section">
+      <div class="setting-header" onclick="toggleSetting(this)">
+        <div class="setting-icon" style="background:rgba(61,214,140,0.12);color:var(--green);"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="currentColor" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="setting-info"><div class="setting-title">Bot Performance Tracking</div><div class="setting-desc">Set start date & initial followers to track growth</div></div>
+        <span class="setting-arrow">&#9660;</span>
+      </div>
+      <div class="setting-body">
+        <label class="form-label">Bot Start Date</label>
+        <input class="form-input" id="botStartDate" type="date">
+        <label class="form-label">Followers at Start</label>
+        <input class="form-input" id="botStartFollowers" type="number" placeholder="e.g. 1200">
+      </div>
+    </div>
+
     <!-- Clinic Info -->
-    <div class="setting-section open">
+    <div class="setting-section">
       <div class="setting-header" onclick="toggleSetting(this)">
         <div class="setting-icon" style="background:var(--accent-soft);color:var(--accent);"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
         <div class="setting-info"><div class="setting-title">Clinic Info</div><div class="setting-desc">Name, address, hours, booking</div></div>
@@ -537,10 +596,16 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
 
   <!-- LOGS -->
   <div class="section" id="sec-logs">
+    <!-- Today's Summary -->
+    <div class="summary-grid" id="todaySummary"></div>
+
     <div class="card">
       <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;">
         <span>DM Log</span>
-        <button onclick="exportCSV()" style="background:var(--surface-2);border:1px solid var(--border);color:var(--text-secondary);padding:6px 12px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;font-family:Inter,sans-serif;">Export CSV</button>
+        <div style="display:flex;gap:6px;">
+          <button onclick="filterUnreviewed()" class="log-action-btn" id="btnUnreviewed" style="font-size:10px;">Unreviewed</button>
+          <button onclick="exportCSV()" class="log-action-btn" style="font-size:10px;">Export CSV</button>
+        </div>
       </div>
       <div style="margin-bottom:10px;">
         <input class="form-input" id="logSearch" placeholder="Search by username or message..." oninput="applyFilters()" style="font-size:14px;">
@@ -564,6 +629,46 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
     </div>
   </div>
 
+</div>
+
+<!-- ── Patient Modal ── -->
+<div class="modal-overlay" id="patientModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modalTitle">@username</h3>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-section">
+        <div class="modal-section-title">Patient Info</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+          <span class="badge badge-country" id="modalCountry"></span>
+          <span class="badge" id="modalVipBadge" style="display:none;"></span>
+          <span class="badge" id="modalPausedBadge" style="display:none;"></span>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:10px;">
+          <button class="log-action-btn" id="modalVipBtn" onclick="toggleModalVip()">VIP</button>
+          <button class="log-action-btn" id="modalPauseBtn" onclick="toggleModalPause()">Pause Bot</button>
+        </div>
+      </div>
+      <div class="modal-section">
+        <div class="modal-section-title">Memo</div>
+        <textarea class="form-textarea" id="modalMemo" rows="2" placeholder="e.g. Interested in filler, visiting July" style="font-size:13px;"></textarea>
+        <button class="btn btn-primary" onclick="saveModalMemo()" style="margin-top:6px;padding:6px 14px;font-size:12px;">Save Memo</button>
+      </div>
+      <div class="modal-section">
+        <div class="modal-section-title">Conversation History</div>
+        <div id="modalHistory"></div>
+      </div>
+      <div class="modal-section">
+        <div class="modal-section-title">Direct Reply</div>
+        <div style="display:flex;gap:8px;">
+          <input class="reply-input" id="modalReplyInput" placeholder="Type a message...">
+          <button class="reply-send" onclick="sendModalReply()">Send</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- ── Bottom Nav (mobile) ── -->
@@ -689,8 +794,81 @@ async function loadHome(){
   const engRate=ig.followers>0?((ig.totalLikes+ig.totalComments)/(ig.followers*pc)*100).toFixed(1):'0';
   document.getElementById('statEngRate').textContent=engRate+'%';
 
-  // Quick Actions — DM counts
-  try{const lr=await fetch('/api/logs');const logs=await lr.json();if(Array.isArray(logs)){document.getElementById('quickDMs').textContent=logs.length;const td=new Date().toISOString().split('T')[0];document.getElementById('quickToday').textContent=logs.filter(l=>(l.createdAt||'').startsWith(td)).length;}}catch(e){}
+  // Quick Actions + Bot Performance — DM counts
+  try{
+    const lr=await fetch('/api/logs');const logs=await lr.json();
+    if(Array.isArray(logs)){
+      document.getElementById('quickDMs').textContent=logs.length;
+      const td=new Date().toISOString().split('T')[0];
+      document.getElementById('quickToday').textContent=logs.filter(l=>(l.createdAt||'').startsWith(td)).length;
+
+      // Bot Performance card
+      const bp=document.getElementById('botPerformance');
+      if(bp && config.botStartDate){
+        const startDate=new Date(config.botStartDate);
+        const daysActive=Math.max(1,Math.floor((Date.now()-startDate.getTime())/864e5));
+        const startFollowers=config.botStartFollowers||0;
+        const followerGrowth=ig.followers-startFollowers;
+        const followerPct=startFollowers>0?((followerGrowth/startFollowers)*100).toFixed(1):'-';
+        const uniqueUsers=new Set(logs.map(l=>l.username).filter(Boolean)).size;
+        const countries=new Set(logs.map(l=>cleanC(l.country)).filter(Boolean)).size;
+        const consulted=logs.filter(l=>l.tag&&l.tag!=='general'&&l.tag!=='stuck'&&l.tag!=='paused'&&l.tag!=='direct').length;
+        const convRate=logs.length>0?Math.round(consulted/logs.length*100):0;
+
+        bp.innerHTML=\`<div class="card" style="background:linear-gradient(135deg,var(--surface),var(--surface-2));margin-bottom:12px;">
+          <div class="card-header" style="display:flex;align-items:center;gap:6px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            Bot Performance — \${daysActive} days active
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+            <div style="padding:10px;background:var(--bg);border-radius:8px;">
+              <div style="font-size:10px;color:var(--text-tertiary);font-weight:600;text-transform:uppercase;">Follower Growth</div>
+              <div style="font-size:20px;font-weight:800;margin-top:4px;color:\${followerGrowth>=0?'var(--green)':'var(--red)'};">\${followerGrowth>=0?'+':''}\${fmt(followerGrowth)}</div>
+              <div style="font-size:10px;color:var(--text-tertiary);">\${followerPct}% since start</div>
+            </div>
+            <div style="padding:10px;background:var(--bg);border-radius:8px;">
+              <div style="font-size:10px;color:var(--text-tertiary);font-weight:600;text-transform:uppercase;">Bot Replied</div>
+              <div style="font-size:20px;font-weight:800;margin-top:4px;color:var(--accent);">\${logs.length}</div>
+              <div style="font-size:10px;color:var(--text-tertiary);">\${(logs.length/daysActive).toFixed(1)}/day avg</div>
+            </div>
+            <div style="padding:10px;background:var(--bg);border-radius:8px;">
+              <div style="font-size:10px;color:var(--text-tertiary);font-weight:600;text-transform:uppercase;">Consulted</div>
+              <div style="font-size:20px;font-weight:800;margin-top:4px;color:var(--green);">\${consulted}</div>
+              <div style="font-size:10px;color:var(--text-tertiary);">\${convRate}% conversion</div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px;">
+            <div style="padding:10px;background:var(--bg);border-radius:8px;">
+              <div style="font-size:10px;color:var(--text-tertiary);font-weight:600;text-transform:uppercase;">Patients</div>
+              <div style="font-size:20px;font-weight:800;margin-top:4px;">\${uniqueUsers}</div>
+              <div style="font-size:10px;color:var(--text-tertiary);">\${countries} countries</div>
+            </div>
+            <div style="padding:10px;background:var(--bg);border-radius:8px;">
+              <div style="font-size:10px;color:var(--text-tertiary);font-weight:600;text-transform:uppercase;">Hours Saved</div>
+              <div style="font-size:20px;font-weight:800;margin-top:4px;color:var(--cyan);">\${logs.length>=60?Math.round(logs.length/60)+'h':logs.length+'m'}</div>
+              <div style="font-size:10px;color:var(--text-tertiary);">~1 min per reply</div>
+            </div>
+            <div style="padding:10px;background:var(--bg);border-radius:8px;">
+              <div style="font-size:10px;color:var(--text-tertiary);font-weight:600;text-transform:uppercase;">Active Days</div>
+              <div style="font-size:20px;font-weight:800;margin-top:4px;">\${daysActive}</div>
+              <div style="font-size:10px;color:var(--text-tertiary);">since \${config.botStartDate}</div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr;gap:8px;margin-top:8px;">
+            <div style="padding:12px;background:var(--bg);border-radius:8px;border-left:3px solid var(--amber);">
+              <div style="display:flex;align-items:center;justify-content:space-between;">
+                <div>
+                  <div style="font-size:10px;color:var(--text-tertiary);font-weight:600;text-transform:uppercase;">Booking Intent</div>
+                  <div style="font-size:10px;color:var(--text-tertiary);margin-top:2px;">Patients who mentioned booking, visiting, or appointments</div>
+                </div>
+                <div style="font-size:24px;font-weight:800;color:var(--amber);">\${(()=>{const bk=['book','appointment','schedule','reserve','i want to come','i want to visit','planning to come','planning to visit','fly to korea','travel to korea','when can i come','i will visit','i\'ll come','see you at','ready to book'];return new Set(logs.filter(l=>bk.some(k=>(l.received||'').toLowerCase().includes(k))).map(l=>l.username||l.senderId)).size;})()}</div>
+              </div>
+            </div>
+          </div>
+        </div>\`;
+      }
+    }
+  }catch(e){}
 
   if(ig.posts?.length){
     const p=[...ig.posts].reverse();
@@ -765,6 +943,9 @@ async function loadConfig(){
   if(!document.getElementById('aiPrompt').value) document.getElementById('aiPrompt').value=DEFAULT_PROMPT;
   // 국가 버튼
   document.getElementById('countryOptions').value = (config.countryOptions || ['United States','Singapore','Australia','Canada','Others']).join(', ');
+  // Bot performance
+  document.getElementById('botStartDate').value = config.botStartDate || '';
+  document.getElementById('botStartFollowers').value = config.botStartFollowers || '';
   // 댓글 설정
   document.getElementById('commentReplyEnabled').checked = config.commentReplyEnabled || false;
   document.getElementById('commentDefaultReply').value = config.commentDefaultReply || '';
@@ -774,6 +955,8 @@ async function loadConfig(){
 async function saveConfig(){
   ['clinicName','address','hours','phone','booking','treatments','greeting','aiPrompt','customRules','fallback','commentDefaultReply'].forEach(k=>{const e=document.getElementById(k);if(e)config[k]=e.value;});
   config.commentReplyEnabled = document.getElementById('commentReplyEnabled').checked;
+  config.botStartDate = document.getElementById('botStartDate').value;
+  config.botStartFollowers = parseInt(document.getElementById('botStartFollowers').value) || 0;
   const coVal = document.getElementById('countryOptions').value;
   config.countryOptions = coVal ? coVal.split(',').map(s=>s.trim()).filter(Boolean) : null;
   collectCommentRules();
@@ -844,9 +1027,10 @@ function rmCR(i){config.commentRules.splice(i,1);renderCommentRules();}
 // ── Logs ──
 let allLogs=[],filteredLogs=[],lp=0;const LPP=20;
 async function loadLogs(){
+  await loadPatientData();
   allLogs=await(await fetch('/api/logs')).json();
-  buildFilterOptions();
-  applyFilters();
+  if(!Array.isArray(allLogs))allLogs=[];
+  buildFilterOptions();renderTodaySummary(allLogs);applyFilters();
 }
 function buildFilterOptions(){
   const countries=new Set(),tags=new Set();
@@ -859,6 +1043,112 @@ function buildFilterOptions(){
   const tSel=document.getElementById('filterTag');
   tSel.innerHTML='<option value="all">All Concerns</option>'+[...tags].sort().map(t=>'<option value="'+esc(t)+'">'+esc(t)+'</option>').join('');
 }
+let patientData={};
+let showUnreviewedOnly=false;
+
+async function loadPatientData(){try{patientData=await(await fetch('/api/patients')).json();}catch(e){patientData={};}}
+
+// ── Today Summary ──
+function renderTodaySummary(logs){
+  const el=document.getElementById('todaySummary');if(!el)return;
+  const today=new Date().toISOString().split('T')[0];
+  const todayLogs=logs.filter(l=>(l.createdAt||'').startsWith(today));
+  const unreviewed=logs.filter(l=>!l.reviewed).length;
+  const stuckCount=Object.values(userMap).filter(u=>u.stuck&&!u.consulted&&!u.interest).length;
+  const consultedCount=Object.values(userMap).filter(u=>u.consulted).length;
+  const countries={};todayLogs.forEach(l=>{const c=cleanC(l.country);if(c)countries[c]=(countries[c]||0)+1;});
+  const topC=Object.entries(countries).sort((a,b)=>b[1]-a[1])[0];
+  const tags={};todayLogs.forEach(l=>{if(l.tag&&l.tag!=='general'&&l.tag!=='direct'&&l.tag!=='paused')tags[l.tag]=(tags[l.tag]||0)+1;});
+  const topT=Object.entries(tags).sort((a,b)=>b[1]-a[1])[0];
+  // 퍼널 — 계정 기준 (중복 제거)
+  const userMap={};
+  logs.forEach(l=>{
+    const key=l.username||l.senderId||'';
+    if(!key)return;
+    if(!userMap[key]) userMap[key]={follow:false,stuck:false,interest:false,consulted:false};
+    if((l.replied||'').includes('[Follow request')) userMap[key].follow=true;
+    if(l.tag==='stuck') userMap[key].stuck=true;
+    if(cleanC(l.country)&&l.tag&&l.tag!=='general'&&l.tag!=='stuck'&&l.tag!=='paused'&&l.tag!=='direct') userMap[key].consulted=true;
+    if(cleanC(l.country)&&(!l.tag||l.tag==='general')) userMap[key].interest=true;
+  });
+  // 최종 상태 결정 (가장 진행된 단계로)
+  let followOnly=0,interestOnly=0;
+  Object.values(userMap).forEach(u=>{
+    if(u.consulted) return; // consulted면 다른 카운트 안 함
+    if(u.interest){interestOnly++;return;}
+    if(u.follow){followOnly++;return;}
+  });
+  el.innerHTML=\`
+    <div class="summary-card"><div class="stat-label">Today's DMs</div><div class="stat-value">\${todayLogs.length}</div></div>
+    <div class="summary-card"><div class="stat-label">Unreviewed</div><div class="stat-value" style="color:\${unreviewed>0?'var(--amber)':'var(--green)'}">\${unreviewed}</div></div>
+    <div class="summary-card"><div class="stat-label">Top Country Today</div><div class="stat-value" style="font-size:13px;">\${topC?flagImg(topC[0],14)+cleanC(topC[0]):'-'}</div></div>
+    <div class="summary-card"><div class="stat-label">Top Concern Today</div><div class="stat-value" style="font-size:13px;">\${topT?topT[0]:'-'}</div></div>
+\`; el.innerHTML+=\`
+    <div class="summary-card" style="grid-column:span 2;"><div class="stat-label">Patient Funnel</div>
+      <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
+        <div class="funnel-item" onclick="filterByFunnel('follow')" style="flex:1;text-align:center;padding:8px;background:var(--bg);border-radius:8px;min-width:70px;cursor:pointer;position:relative;">
+          <div style="font-size:16px;font-weight:800;color:var(--red);">\${followOnly}</div>
+          <div style="font-size:10px;color:var(--text-tertiary);margin-top:2px;">Follow only</div>
+        </div>
+        <div style="flex:0;display:flex;align-items:center;color:var(--text-tertiary);font-size:10px;">→</div>
+        <div class="funnel-item" onclick="filterByFunnel('stuck')" style="flex:1;text-align:center;padding:8px;background:var(--bg);border-radius:8px;min-width:70px;cursor:pointer;position:relative;">
+          <div style="font-size:16px;font-weight:800;color:var(--amber);">\${stuckCount}</div>
+          <div style="font-size:10px;color:var(--text-tertiary);margin-top:2px;">Stuck</div>
+        </div>
+        <div style="flex:0;display:flex;align-items:center;color:var(--text-tertiary);font-size:10px;">→</div>
+        <div class="funnel-item" onclick="filterByFunnel('interest')" style="flex:1;text-align:center;padding:8px;background:var(--bg);border-radius:8px;min-width:70px;cursor:pointer;position:relative;">
+          <div style="font-size:16px;font-weight:800;color:var(--cyan);">\${interestOnly}</div>
+          <div style="font-size:10px;color:var(--text-tertiary);margin-top:2px;">Interest only</div>
+        </div>
+        <div style="flex:0;display:flex;align-items:center;color:var(--text-tertiary);font-size:10px;">→</div>
+        <div class="funnel-item" onclick="filterByFunnel('consulted')" style="flex:1;text-align:center;padding:8px;background:var(--bg);border-radius:8px;min-width:70px;cursor:pointer;position:relative;">
+          <div style="font-size:16px;font-weight:800;color:var(--green);">\${consultedCount}</div>
+          <div style="font-size:10px;color:var(--text-tertiary);margin-top:2px;">Consulted</div>
+        </div>
+      </div>
+    </div>\`;
+}
+
+let funnelFilter='';
+function filterByFunnel(type){
+  if(funnelFilter===type){funnelFilter='';} else {funnelFilter=type;}
+  // 퍼널 항목 active 표시
+  document.querySelectorAll('.funnel-item').forEach(el=>el.style.outline='none');
+  if(funnelFilter){
+    const idx={follow:0,stuck:1,interest:2,consulted:3}[funnelFilter];
+    const items=document.querySelectorAll('.funnel-item');
+    if(items[idx]) items[idx].style.outline='2px solid var(--accent)';
+  }
+  showUnreviewedOnly=false;
+  document.getElementById('btnUnreviewed')?.classList.remove('active');
+  applyFilters();
+}
+
+function showFunnelTip(el,msg){
+  // 기존 tooltip 제거
+  document.querySelectorAll('.funnel-tip').forEach(t=>t.remove());
+  const tip=document.createElement('div');
+  tip.className='funnel-tip';tip.textContent=msg;
+  el.appendChild(tip);
+  requestAnimationFrame(()=>tip.classList.add('show'));
+  setTimeout(()=>tip.classList.remove('show'),2500);
+  setTimeout(()=>tip.remove(),2800);
+}
+
+let showStuckOnly=false;
+function filterUnreviewed(){
+  showUnreviewedOnly=!showUnreviewedOnly;showStuckOnly=false;
+  document.getElementById('btnUnreviewed')?.classList.toggle('active',showUnreviewedOnly);
+  document.getElementById('btnStuck')?.classList.remove('active');
+  applyFilters();
+}
+function filterStuck(){
+  showStuckOnly=!showStuckOnly;showUnreviewedOnly=false;
+  document.getElementById('btnStuck')?.classList.toggle('active',showStuckOnly);
+  document.getElementById('btnUnreviewed')?.classList.remove('active');
+  applyFilters();
+}
+
 function timeAgo(d){
   if(!d)return'';
   const s=Math.floor((Date.now()-new Date(d).getTime())/1000);
@@ -882,9 +1172,21 @@ function applyFilters(){
   if(country!=='all') logs=logs.filter(l=>cleanC(l.country)===country);
   if(tag!=='all') logs=logs.filter(l=>l.tag===tag);
   if(search) logs=logs.filter(l=>(l.username||'').toLowerCase().includes(search)||(l.received||'').toLowerCase().includes(search)||(l.replied||'').toLowerCase().includes(search));
-  filteredLogs=logs;
+  if(showUnreviewedOnly) logs=logs.filter(l=>!l.reviewed);
+  if(funnelFilter==='follow') logs=logs.filter(l=>(l.replied||'').includes('[Follow request'));
+  if(funnelFilter==='stuck') logs=logs.filter(l=>l.tag==='stuck');
+  if(funnelFilter==='interest') logs=logs.filter(l=>cleanC(l.country)&&(!l.tag||l.tag==='general'));
+  if(funnelFilter==='consulted') logs=logs.filter(l=>l.tag&&l.tag!=='general'&&l.tag!=='stuck'&&l.tag!=='paused'&&l.tag!=='direct'&&!(l.replied||'').includes('[Follow request'));
+  // 계정당 최신 1건만 (username 기준 중복 제거)
+  const seen=new Set();
+  const unique=[];
+  for(const l of logs){
+    const key=l.username||l.senderId||Math.random();
+    if(!seen.has(key)){seen.add(key);unique.push(l);}
+  }
+  filteredLogs=unique;
   lp=0;
-  document.getElementById('logCount').textContent=filteredLogs.length+' message'+(filteredLogs.length!==1?'s':'');
+  document.getElementById('logCount').textContent=filteredLogs.length+' patient'+(filteredLogs.length!==1?'s':'')+' ('+logs.length+' messages)';
   renderLogs();
 }
 function renderLogs(){
@@ -897,17 +1199,45 @@ function renderLogs(){
     const ago=timeAgo(l.createdAt);
     const noCountry=!l.country||!cleanC(l.country);
     const longReply=(l.replied||'').length>150;
-    return \`<div class="log-item \${noCountry?'log-no-country':''}">
+    const isVip=patientData[l.username]?.vip;
+    const isPaused=patientData[l.username]?.paused;
+    const isReviewed=l.reviewed;
+    const isDirect=l.tag==='direct';
+    const globalIdx=allLogs.indexOf(l);
+    return \`<div class="log-item \${noCountry?'log-no-country':''} \${isReviewed?'reviewed':'unreviewed'}">
       <div class="log-header">
         <div class="log-badges">
-          \${l.username?'<span class="badge badge-user">@'+esc(l.username)+'</span>':''}
-          \${!noCountry?'<span class="badge badge-country">'+flagImg(l.country,12)+esc(cleanC(l.country))+'</span>':'<span class="badge" style="background:var(--surface-2);color:var(--text-tertiary);">No country</span>'}
-          \${l.tag?'<span class="badge badge-tag">'+esc(l.tag)+'</span>':''}
+          \${l.username?'<span class="badge badge-user" style="cursor:pointer" onclick="openPatient(\\''+esc(l.username)+'\\',\\''+esc(l.senderId)+'\\')">@'+esc(l.username)+'</span>':''}
+          \${!noCountry?'<span class="badge badge-country">'+flagImg(l.country,12)+esc(cleanC(l.country))+'</span>':''}
+          \${(()=>{
+            const isFollow=(l.replied||'').includes('[Follow request');
+            const isStuck=l.tag==='stuck';
+            const isInterest=cleanC(l.country)&&(!l.tag||l.tag==='general');
+            const isConsulted=l.tag&&l.tag!=='general'&&l.tag!=='stuck'&&l.tag!=='paused'&&l.tag!=='direct'&&!isFollow;
+            if(isFollow) return '<span class="badge" style="background:var(--red-soft);color:var(--red);">Follow only</span>';
+            if(isStuck) return '<span class="badge" style="background:rgba(240,178,74,0.12);color:var(--amber);">Stuck</span>';
+            if(isConsulted) return '<span class="badge" style="background:var(--green-soft);color:var(--green);">Consulted</span>' + (l.tag?'<span class="badge badge-tag">'+esc(l.tag)+'</span>':'');
+            if(isInterest) return '<span class="badge" style="background:rgba(74,200,232,0.12);color:var(--cyan);">Interest only</span>';
+            return l.tag&&l.tag!=='paused'&&l.tag!=='direct'?'<span class="badge badge-tag">'+esc(l.tag)+'</span>':'';
+          })()}
+          \${isVip?'<span class="badge badge-vip">VIP</span>':''}
+          \${isPaused?'<span class="badge badge-paused">Bot Paused</span>':''}
+          \${isDirect?'<span class="badge badge-direct">Direct</span>':''}
         </div>
         <div class="log-time-relative">\${ago}</div>
       </div>
       <div class="log-bubble log-bubble-in"><div class="log-bubble-label">Received</div><div>\${esc(l.received)}</div></div>
       <div class="log-bubble log-bubble-out"><div class="log-bubble-label">Replied</div><div class="log-bubble-text\${longReply?'':' expanded'}" id="\${id}">\${esc(l.replied)}</div>\${longReply?'<button class="log-expand" onclick="toggleLogExpand(\\''+id+'\\',this)">Show more</button>':''}</div>
+      <div class="log-actions">
+        <button class="log-action-btn \${isReviewed?'active':''}" onclick="toggleReview(\${globalIdx})">
+          \${isReviewed?'Reviewed':'Mark reviewed'}
+        </button>
+        <button class="log-action-btn" onclick="showReplyBox(\\'rbox-\${id}\\',\\''+l.senderId+'\\')">Reply</button>
+      </div>
+      <div class="reply-box" id="rbox-\${id}">
+        <input class="reply-input" placeholder="Type a direct reply..." id="rinput-\${id}">
+        <button class="reply-send" onclick="sendDirectReply(\\''+l.senderId+'\\',\\'rinput-\${id}\\')">Send</button>
+      </div>
     </div>\`;
   }).join('')+(tp>1?\`<div class="page-nav"><button class="page-btn" onclick="pl()" \${lp===0?'disabled':''}>Prev</button><span style="color:var(--text-tertiary);font-size:12px;font-weight:600">\${lp+1}/\${tp}</span><button class="page-btn" onclick="nl()" \${lp>=tp-1?'disabled':''}>Next</button></div>\`:'');
 }
@@ -915,6 +1245,83 @@ function toggleLogExpand(id,btn){const el=document.getElementById(id);if(!el)ret
 function pl(){if(lp>0){lp--;renderLogs();}}
 function nl(){if((lp+1)*LPP<filteredLogs.length){lp++;renderLogs();}}
 function esc(s){const d=document.createElement('div');d.textContent=s||'';return d.innerHTML;}
+
+// ── Review Toggle ──
+async function toggleReview(idx){
+  if(!allLogs[idx])return;
+  allLogs[idx].reviewed=!allLogs[idx].reviewed;
+  renderLogs();
+  await fetch('/api/logs/review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({index:idx,reviewed:allLogs[idx].reviewed})});
+}
+
+// ── Direct Reply ──
+function showReplyBox(id){const el=document.getElementById(id);if(el)el.classList.toggle('show');}
+async function sendDirectReply(senderId,inputId){
+  const input=document.getElementById(inputId);if(!input||!input.value.trim())return;
+  const msg=input.value.trim();input.value='';
+  const res=await fetch('/api/reply',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({senderId,message:msg})});
+  if(res.ok){toast('Reply sent!');loadLogs();}else{toast('Failed to send');}
+}
+
+// ── Patient Modal ──
+let currentModalUser='',currentModalSenderId='';
+function openPatient(username,senderId){
+  currentModalUser=username;currentModalSenderId=senderId;
+  document.getElementById('modalTitle').textContent='@'+username;
+  // Country
+  const userLogs=allLogs.filter(l=>l.username===username);
+  const country=userLogs.find(l=>cleanC(l.country))?.country||'';
+  document.getElementById('modalCountry').innerHTML=country?flagImg(country,14)+esc(cleanC(country)):'No country';
+  // VIP/Pause state
+  const pd=patientData[username]||{};
+  document.getElementById('modalVipBtn').className='log-action-btn'+(pd.vip?' active':'');
+  document.getElementById('modalVipBtn').textContent=pd.vip?'VIP (ON)':'VIP';
+  document.getElementById('modalPauseBtn').className='log-action-btn'+(pd.paused?' active':'');
+  document.getElementById('modalPauseBtn').textContent=pd.paused?'Bot Paused':'Pause Bot';
+  document.getElementById('modalVipBadge').style.display=pd.vip?'inline':'none';
+  document.getElementById('modalVipBadge').className='badge badge-vip';
+  document.getElementById('modalVipBadge').textContent='VIP';
+  document.getElementById('modalPausedBadge').style.display=pd.paused?'inline':'none';
+  document.getElementById('modalPausedBadge').className='badge badge-paused';
+  document.getElementById('modalPausedBadge').textContent='Bot Paused';
+  // Memo
+  document.getElementById('modalMemo').value=pd.memo||'';
+  // History
+  const hist=document.getElementById('modalHistory');
+  hist.innerHTML=[...userLogs].reverse().map(l=>\`<div style="margin-bottom:10px;">
+    <div style="font-size:10px;color:var(--text-tertiary);margin-bottom:4px;">\${timeAgo(l.createdAt)}\${l.tag?' · '+l.tag:''}</div>
+    <div class="log-bubble log-bubble-in" style="margin-bottom:4px;"><div style="font-size:12px;">\${esc(l.received)}</div></div>
+    <div class="log-bubble log-bubble-out"><div style="font-size:12px;">\${esc(l.replied)}</div></div>
+  </div>\`).join('')||'<p class="empty">No conversation history.</p>';
+  // Reply input
+  document.getElementById('modalReplyInput').value='';
+  document.getElementById('patientModal').classList.add('show');
+}
+function closeModal(){document.getElementById('patientModal').classList.remove('show');}
+async function toggleModalVip(){
+  if(!patientData[currentModalUser])patientData[currentModalUser]={};
+  patientData[currentModalUser].vip=!patientData[currentModalUser].vip;
+  await fetch('/api/patients',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(patientData)});
+  openPatient(currentModalUser,currentModalSenderId);renderLogs();
+}
+async function toggleModalPause(){
+  if(!patientData[currentModalUser])patientData[currentModalUser]={};
+  patientData[currentModalUser].paused=!patientData[currentModalUser].paused;
+  await fetch('/api/patients',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(patientData)});
+  openPatient(currentModalUser,currentModalSenderId);renderLogs();toast(patientData[currentModalUser].paused?'Bot paused for @'+currentModalUser:'Bot resumed for @'+currentModalUser);
+}
+async function saveModalMemo(){
+  if(!patientData[currentModalUser])patientData[currentModalUser]={};
+  patientData[currentModalUser].memo=document.getElementById('modalMemo').value;
+  await fetch('/api/patients',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(patientData)});
+  toast('Memo saved!');
+}
+async function sendModalReply(){
+  const input=document.getElementById('modalReplyInput');if(!input||!input.value.trim()||!currentModalSenderId)return;
+  const msg=input.value.trim();input.value='';
+  const res=await fetch('/api/reply',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({senderId:currentModalSenderId,message:msg})});
+  if(res.ok){toast('Reply sent to @'+currentModalUser);await loadLogs();openPatient(currentModalUser,currentModalSenderId);}else{toast('Failed to send');}
+}
 function exportCSV(){
   if(!filteredLogs.length){toast('No data to export');return;}
   const csvEsc=s=>\`"\${(s||'').replace(/"/g,'""')}"\`;
@@ -937,7 +1344,7 @@ function logout(){sessionStorage.clear();location.replace('/');}
 // ── Session ──
 if(!sessionStorage.getItem('drsean_user'))location.replace('/');
 (async()=>{
-  await Promise.all([loadConfig(),loadStatus(),loadHome()]);
+  try{ await Promise.all([loadConfig(),loadStatus(),loadHome()]); }catch(e){ console.error('Init error:',e); }
   document.querySelector('.content').classList.add('loaded');
 })();
 <\/script>

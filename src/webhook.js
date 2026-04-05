@@ -3,7 +3,7 @@
  */
 
 import { generateReply } from './reply.js';
-import { logMessage, getConfig } from './storage.js';
+import { logMessage, getConfig, isPatientPaused } from './storage.js';
 
 /** GET /webhook — Meta 웹훅 검증 */
 export function verifyWebhook(request, env) {
@@ -64,6 +64,12 @@ export async function handleWebhook(request, env) {
           await sendMessage(senderId, "Hey! To get a free personalized skin consultation, please follow @dr.skinsource first 😊\n\nOnce you follow, I can help with skincare advice, treatment recommendations, and more!", env);
           await sendMessage(senderId, "Tap below once you've followed!", env, ["I've followed! ✨"]);
           if (!isTestUser) await logMessage(env, { senderId, username: profile.username || '', received: text, replied: '[Follow request - not following]', timestamp });
+          continue;
+        }
+
+        // 봇 일시정지 환자 → 답장 안 보냄 (로그만 기록)
+        if (profile.username && await isPatientPaused(env, profile.username)) {
+          if (!isTestUser) await logMessage(env, { senderId, username: profile.username, received: text, replied: '[Bot paused — waiting for manual reply]', timestamp, tag: 'paused' });
           continue;
         }
 

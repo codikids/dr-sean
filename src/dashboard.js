@@ -2,7 +2,7 @@
  * 관리 대시보드 서빙 + API
  */
 
-import { getConfig, saveConfig, getRecentLogs } from './storage.js';
+import { getConfig, saveConfig, getRecentLogs, updateLogs, getPatientData, savePatientData } from './storage.js';
 import { DASHBOARD_HTML } from './dashboard-html.js';
 import { LOGIN_HTML } from './login-html.js';
 
@@ -80,6 +80,45 @@ export async function handleDashboardAPI(request, env, path) {
     if (path === '/api/password' && request.method === 'POST') {
       const { password } = await request.json();
       await env.KV.put('dashboard_password', password);
+      return json({ ok: true }, 200, cors);
+    }
+
+    // POST /api/logs/review — 로그 reviewed 토글
+    if (path === '/api/logs/review' && request.method === 'POST') {
+      const { index, reviewed } = await request.json();
+      const logs = await getRecentLogs(env);
+      if (logs[index]) { logs[index].reviewed = reviewed; await updateLogs(env, logs); }
+      return json({ ok: true }, 200, cors);
+    }
+
+    // POST /api/reply — 직접 답장 전송
+    if (path === '/api/reply' && request.method === 'POST') {
+      const { senderId, message } = await request.json();
+      const url = `https://graph.instagram.com/v21.0/me/messages`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${env.META_PAGE_TOKEN}` },
+        body: JSON.stringify({ recipient: { id: senderId }, message: { text: message } }),
+      });
+      if (!res.ok) return json({ error: await res.text() }, 500, cors);
+      // 로그에 직접 답장 기록
+      const logs = await getRecentLogs(env);
+      logs.unshift({ senderId, username: '', received: '[Direct reply from dashboard]', replied: message, timestamp: Date.now(), createdAt: new Date().toISOString(), tag: 'direct', reviewed: true });
+      if (logs.length > 400) logs.splice(400);
+      await updateLogs(env, logs);
+      return json({ ok: true }, 200, cors);
+    }
+
+    // GET /api/patients — 환자 데이터 (VIP, 메모, 일시정지)
+    if (path === '/api/patients' && request.method === 'GET') {
+      const data = await getPatientData(env);
+      return json(data, 200, cors);
+    }
+
+    // PUT /api/patients — 환자 데이터 업데이트
+    if (path === '/api/patients' && request.method === 'PUT') {
+      const body = await request.json();
+      await savePatientData(env, body);
       return json({ ok: true }, 200, cors);
     }
 

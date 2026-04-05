@@ -98,7 +98,27 @@ export async function generateReply(text, senderId, env) {
 
   if (!hasCountry) {
     const normalized = text.toLowerCase().trim();
-    const matched = COUNTRY_MAP[normalized];
+    // Quick Reply 정확 매칭 또는 텍스트 입력 유연 매칭
+    let matched = COUNTRY_MAP[normalized];
+    if (!matched) {
+      // 유연 매칭 — 텍스트에 국가명이 포함되어 있으면 인식
+      const FUZZY_MAP = {
+        'usa':'United States','america':'United States','us':'United States','united states':'United States',
+        'singapore':'Singapore','australia':'Australia','canada':'Canada',
+        'china':'China','japan':'Japan','korea':'Korea','thailand':'Thailand','vietnam':'Vietnam',
+        'taiwan':'Taiwan','hong kong':'Hong Kong','indonesia':'Indonesia','malaysia':'Malaysia',
+        'philippines':'Philippines','myanmar':'Myanmar','india':'India','uk':'UK','united kingdom':'UK',
+        'russia':'Russia','germany':'Germany','france':'France','brazil':'Brazil','mexico':'Mexico',
+        'netherlands':'Netherlands','italy':'Italy','spain':'Spain','switzerland':'Switzerland',
+        'new zealand':'New Zealand','turkey':'Turkey','saudi':'Saudi Arabia','uae':'UAE','dubai':'UAE',
+        'egypt':'Egypt','nigeria':'Nigeria','colombia':'Colombia','argentina':'Argentina',
+        'pakistan':'Pakistan','bangladesh':'Bangladesh','nepal':'Nepal','cambodia':'Cambodia',
+        'laos':'Laos','sri lanka':'Sri Lanka','israel':'Israel','sweden':'Sweden','norway':'Norway',
+      };
+      for (const [key, val] of Object.entries(FUZZY_MAP)) {
+        if (normalized.includes(key)) { matched = val; break; }
+      }
+    }
     // "Others" 선택 시 → 직접 입력 요청
     if (matched === 'Others') {
       const askCountry = "Type your country! Knowing where you're from helps me give you more accurate skincare advice based on your climate and skin type.";
@@ -122,7 +142,26 @@ export async function generateReply(text, senderId, env) {
       await env.KV.put(`country:${senderId}`, metadata.country, { expirationTtl: 60 * 60 * 24 * 90 });
       return { reply: countryReply, metadata };
     }
-    // 매칭 안 됨 → 국가 선택 다시 안내 (Quick Replies)
+    // 매칭 안 됨 — 몇 번째 시도인지 확인
+    const countryRetries = conversation.filter(m => m.role === 'assistant' && (m.text || '').includes('where you from')).length;
+
+    if (countryRetries >= 2) {
+      // 3번 이상 실패 → 자동으로 텍스트를 국가로 저장하고 진행
+      const typed = text.trim() || 'Unknown';
+      const flag = getFlag(typed);
+      metadata.country = `${flag} ${typed}`;
+      metadata.tag = 'stuck';
+      await env.KV.put(`country:${senderId}`, metadata.country, { expirationTtl: 60 * 60 * 24 * 90 });
+      const rescueMsg = `Got it! Let's get started 😊\n\nWhat can I help you with? Feel free to ask me anything about skin care or treatments!`;
+      await saveConversation(env, senderId, [
+        ...conversation,
+        { role: 'user', text },
+        { role: 'assistant', text: rescueMsg },
+      ]);
+      return { reply: rescueMsg, metadata };
+    }
+
+    // 1-2번째 시도 → 다시 안내
     const retryMsg = "Where are you from? Tap below!";
     await saveConversation(env, senderId, [
       ...conversation,

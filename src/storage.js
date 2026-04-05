@@ -94,3 +94,29 @@ export async function getRecentLogs(env) {
     return logs || [];
   } catch(e) { return []; }
 }
+
+/** 로그 업데이트 (reviewed 등) */
+export async function updateLogs(env, logs) {
+  try {
+    await env.KV.put('all_logs', JSON.stringify(logs));
+  } catch(e) { console.error('updateLogs failed:', e); }
+}
+
+/** 환자 데이터 (VIP, 메모, 봇 일시정지) */
+export async function getPatientData(env) {
+  try {
+    return await env.KV.get('patient_data', 'json') || {};
+  } catch(e) { return {}; }
+}
+
+export async function savePatientData(env, data) {
+  try {
+    await env.KV.put('patient_data', JSON.stringify(data));
+  } catch(e) { console.error('savePatientData failed:', e); }
+}
+
+/** 특정 환자가 봇 일시정지 상태인지 확인 */
+export async function isPatientPaused(env, username) {
+  const data = await getPatientData(env);
+  return data[username]?.paused || false;
+}
