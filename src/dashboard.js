@@ -56,6 +56,21 @@ export async function handleDashboardAPI(request, env, path) {
       return json({ ok: true }, 200, cors);
     }
 
+    // PUT /api/ai-usage — AI 사용량 수동 설정
+    if (path === '/api/ai-usage' && request.method === 'PUT') {
+      const body = await request.json();
+      const month = new Date().toISOString().slice(0, 7);
+      await env.KV.put(`ai_usage:${month}`, JSON.stringify(body));
+      return json({ ok: true }, 200, cors);
+    }
+
+    // GET /api/ai-usage — AI 사용량 조회
+    if (path === '/api/ai-usage' && request.method === 'GET') {
+      const month = new Date().toISOString().slice(0, 7); // "2026-04"
+      const usage = JSON.parse(await env.KV.get(`ai_usage:${month}`) || '{"requests":0,"inputTokens":0,"outputTokens":0,"cost":0}');
+      return json(usage, 200, cors);
+    }
+
     // GET /api/logs — DM 로그 조회
     if (path === '/api/logs' && request.method === 'GET') {
       const logs = await getRecentLogs(env);
@@ -88,6 +103,14 @@ export async function handleDashboardAPI(request, env, path) {
       const { index, reviewed } = await request.json();
       const logs = await getRecentLogs(env);
       if (logs[index]) { logs[index].reviewed = reviewed; await updateLogs(env, logs); }
+      return json({ ok: true }, 200, cors);
+    }
+
+    // POST /api/logs/tag — 로그 태그 수정
+    if (path === '/api/logs/tag' && request.method === 'POST') {
+      const { index, tag } = await request.json();
+      const logs = await getRecentLogs(env);
+      if (logs[index]) { logs[index].tag = tag; await updateLogs(env, logs); }
       return json({ ok: true }, 200, cors);
     }
 

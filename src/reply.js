@@ -161,7 +161,8 @@ export async function generateReply(text, senderId, env) {
       return { reply: rescueMsg, metadata };
     }
 
-    // 1-2번째 시도 → 다시 안내
+    // 1-2번째 시도 → 다시 안내 (stuck 태그 부여)
+    metadata.tag = 'stuck';
     const retryMsg = "Where are you from? Tap below!";
     await saveConversation(env, senderId, [
       ...conversation,
@@ -202,16 +203,37 @@ export async function generateReply(text, senderId, env) {
     // TAG 추출 실패 시 — 키워드 기반 자동 분류
     const t = text.toLowerCase();
     const tagMap = [
-      ['acne','acne'],['pimple','acne'],['breakout','acne'],['scar','scar'],['dark spot','pigmentation'],
-      ['pigment','pigmentation'],['melasma','melasma'],['botox','botox'],['filler','filler'],
-      ['wrinkle','wrinkle'],['aging','aging'],['anti-aging','aging'],['oily','oily'],
-      ['pore','pore'],['redness','redness'],['rosacea','redness'],['laser','laser'],
-      ['routine','routine'],['dark circle','dark-circles'],['under eye','dark-circles'],
+      // 피부 고민
+      ['acne','acne'],['pimple','acne'],['breakout','acne'],['zit','acne'],
+      ['scar','scar'],['scarring','scar'],
+      ['dark spot','pigmentation'],['pigment','pigmentation'],['melasma','melasma'],['hyperpigment','pigmentation'],['sun spot','pigmentation'],['freckle','pigmentation'],
+      ['whiten','whitening'],['brighten','whitening'],['glow','whitening'],['lighten','whitening'],['tone','whitening'],['fair','whitening'],
+      ['wrinkle','anti-aging'],['aging','anti-aging'],['anti-aging','anti-aging'],['fine line','anti-aging'],['sagging','anti-aging'],['saggy','anti-aging'],['lifting','lifting'],['lift','lifting'],['tighten','lifting'],['firm','lifting'],
+      ['oily','oily-skin'],['dry skin','dry-skin'],['sensitive','sensitive-skin'],['eczema','eczema'],['dermatitis','eczema'],['psoriasis','psoriasis'],
+      ['pore','pore'],['blackhead','pore'],['whitehead','pore'],
+      ['redness','redness'],['rosacea','redness'],['flush','redness'],
+      ['dark circle','dark-circles'],['under eye','dark-circles'],['eye bag','eye-bag'],['puffy eye','eye-bag'],
+      ['routine','skincare'],['moistur','skincare'],['cleanser','skincare'],['serum','skincare'],['sunscreen','skincare'],['spf','skincare'],['retinol','skincare'],['vitamin c','skincare'],
+      // 시술/치료
+      ['botox','botox'],['filler','filler'],['hyaluronic','filler'],
+      ['laser','laser'],['ipl','laser'],['peel','peel'],['chemical peel','peel'],
+      ['facelift','facelift'],['face lift','facelift'],['thread','thread-lift'],['thread lift','thread-lift'],
+      ['rhinoplasty','rhinoplasty'],['nose','rhinoplasty'],['nose job','rhinoplasty'],
+      ['lip','lip'],['jawline','jawline'],['jaw','jawline'],['v-line','jawline'],['vline','jawline'],
+      ['cheek','cheek'],['forehead','forehead'],['eyelid','eyelid'],['double eyelid','eyelid'],['blepharoplasty','eyelid'],
+      ['chin','chin'],['neck','neck'],['double chin','chin'],
+      ['hair','hair'],['transplant','transplant'],['hair loss','hair'],['bald','hair'],
+      ['liposuction','liposuction'],['lipo','liposuction'],['fat','liposuction'],
+      ['tummy','body'],['body','body'],['breast','breast'],['augment','augmentation'],
+      // 일반 상담
+      ['consultation','consultation'],['appointment','consultation'],['procedure','consultation'],
+      ['surgery','consultation'],['cost','consultation'],['price','consultation'],['how much','consultation'],
+      ['treatment','consultation'],['skin','consultation'],
     ];
     for (const [kw, tag] of tagMap) {
       if (t.includes(kw)) { metadata.tag = tag; break; }
     }
-    if (!metadata.tag) metadata.tag = 'general';
+    if (!metadata.tag) metadata.tag = '';
     // 메타데이터 라인 제거 (부분 매칭)
     cleanReply = rawReply.replace(/^\[.*?\]\s*\n*/i, '').trim() || rawReply;
   }
@@ -260,15 +282,27 @@ async function askClaude(text, conversation, config, env, country) {
   messages.push({ role: 'user', content: text });
 
   try {
+    // API 키: config(사용자 설정) 우선, 없으면 env(개발자 키)
+    const apiKey = config.claudeApiKey || env.CLAUDE_API_KEY;
+    const model = config.claudeModel || 'claude-haiku-4-5-20251001';
+    if (!apiKey) return config.fallback || 'AI is not configured. Please add a Claude API key in Settings.';
+
+    // 월간 한도 체크
+    const month = new Date().toISOString().slice(0, 7);
+    const usage = JSON.parse(await env.KV.get(`ai_usage:${month}`) || '{"requests":0,"inputTokens":0,"outputTokens":0,"cost":0}');
+    if (config.claudeMonthlyLimit && usage.cost >= config.claudeMonthlyLimit) {
+      return config.fallback || 'Thanks for reaching out! Our AI assistant is currently at capacity. We\'ll get back to you soon!';
+    }
+
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': env.CLAUDE_API_KEY,
+        'x-api-key': apiKey,
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
+        model,
         max_tokens: 300,
         system: systemPrompt,
         messages,
@@ -281,6 +315,20 @@ async function askClaude(text, conversation, config, env, country) {
     }
 
     const data = await res.json();
+
+    // 토큰 사용량 추적
+    const inTok = data.usage?.input_tokens || 0;
+    const outTok = data.usage?.output_tokens || 0;
+    // 가격 계산 (per 1M tokens) — Haiku: $0.80/$4, Sonnet: $3/$15, Opus: $15/$75
+    const prices = {'claude-haiku-4-5-20251001':[0.80,4],'claude-sonnet-4-6':[3,15],'claude-opus-4-6':[15,75]};
+    const [inPrice,outPrice] = prices[model] || [0.80,4];
+    const cost = (inTok * inPrice / 1e6) + (outTok * outPrice / 1e6);
+    usage.requests++;
+    usage.inputTokens += inTok;
+    usage.outputTokens += outTok;
+    usage.cost = Math.round((usage.cost + cost) * 1e6) / 1e6;
+    await env.KV.put(`ai_usage:${month}`, JSON.stringify(usage));
+
     let reply = data.content[0].text;
     // 마크다운 제거 (인스타 DM은 plain text만 지원)
     reply = reply.replace(/\*\*/g, '').replace(/\*/g, '').replace(/^#+\s/gm, '').replace(/^- /gm, '• ');
@@ -370,13 +418,14 @@ ${config.treatments || '(No treatment info registered yet)'}
 You MUST start EVERY reply with a metadata line in this exact format, then a blank line, then your actual message:
 [TAG: category | COUNTRY: country_if_known]
 
-- TAG: a single English word summarizing what they're asking about (e.g. acne, scar, pigmentation, botox, filler, oily, wrinkle, pore, redness, routine, laser, general)
+- TAG: a specific English keyword for their skin concern or desired procedure. Be as specific as possible. Examples: acne, scar, pigmentation, whitening, botox, filler, wrinkle, anti-aging, lifting, pore, redness, rhinoplasty, jawline, facelift, eyelid, lip, laser, peel, thread-lift, hair, liposuction, skincare, consultation. Use "none" if the message has absolutely nothing to do with skin, beauty, or medical procedures.
 - COUNTRY: the country if you know it from the conversation, otherwise "unknown"
+- CRITICAL: If the patient mentions ANY skin concern, treatment, procedure, or beauty topic, you MUST use a specific tag — NEVER use "general" for these. The tag is used for patient funnel tracking.
 
 Example:
-[TAG: acne | COUNTRY: Japan]
+[TAG: whitening | COUNTRY: India]
 
-Hey! So for acne scarring, it really depends on...
+Hey! So for skin brightening, it really depends on...
 
 The metadata line will be stripped before sending — the user will NOT see it. But you MUST always include it.`;
 }
