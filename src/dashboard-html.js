@@ -394,6 +394,11 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
     <!-- Chart -->
     <div class="chart-card">
       <div class="card-header">Post Engagement — All Posts</div>
+      <div style="display:flex;gap:6px;margin:8px 0;" id="engToggle">
+        <button onclick="engSwitch(0)" style="flex:1;padding:6px;border:none;border-radius:6px;font-size:10px;font-weight:700;font-family:Inter,sans-serif;cursor:pointer;background:#4AC8E8;color:#fff;">Views</button>
+        <button onclick="engSwitch(1)" style="flex:1;padding:6px;border:none;border-radius:6px;font-size:10px;font-weight:700;font-family:Inter,sans-serif;cursor:pointer;background:var(--bg);color:var(--text-tertiary);">Likes</button>
+        <button onclick="engSwitch(2)" style="flex:1;padding:6px;border:none;border-radius:6px;font-size:10px;font-weight:700;font-family:Inter,sans-serif;cursor:pointer;background:var(--bg);color:var(--text-tertiary);">Comments</button>
+      </div>
       <div class="chart-wrap chart-wrap-lg"><canvas id="chartEngagement"></canvas></div>
     </div>
   </div>
@@ -924,15 +929,17 @@ async function loadHome(){
 
   if(ig.posts?.length){
     const p=[...ig.posts].reverse();
+    const labels=p.map(x=>x.date?new Date(x.date).toLocaleDateString('en',{month:'short',day:'numeric'}):'');
     const ds=[
-      {label:'Likes',data:p.map(x=>x.likes),backgroundColor:'#5B8DEF',borderRadius:5,barPercentage:0.55},
-      {label:'Comments',data:p.map(x=>x.comments),backgroundColor:'#3DD68C',borderRadius:5,barPercentage:0.55},
+      {label:'Views',data:p.map(x=>x.views||0),backgroundColor:'#4AC8E8',borderRadius:5,barPercentage:0.6,hidden:false},
+      {label:'Likes',data:p.map(x=>x.likes),backgroundColor:'#5B8DEF',borderRadius:5,barPercentage:0.6,hidden:true},
+      {label:'Comments',data:p.map(x=>x.comments),backgroundColor:'#3DD68C',borderRadius:5,barPercentage:0.6,hidden:true},
     ];
-    if(p.some(x=>x.views>0))ds.push({label:'Views',data:p.map(x=>x.views||0),backgroundColor:'#4AC8E8',borderRadius:5,barPercentage:0.55});
-    new Chart(document.getElementById('chartEngagement'),{
+    const engOpts=cOpts();engOpts.plugins.legend={display:false};
+    window._engChart=new Chart(document.getElementById('chartEngagement'),{
       type:'bar',
-      data:{labels:p.map(x=>x.date?new Date(x.date).toLocaleDateString('en',{month:'short',day:'numeric'}):''),datasets:ds},
-      options:cOpts()
+      data:{labels,datasets:ds},
+      options:engOpts
     });
   }
 }
@@ -984,7 +991,16 @@ async function loadAnalytics(){
   }
 }
 
-function cOpts(){return{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#A0A8C0',font:{size:10,family:'Inter'},usePointStyle:true,pointStyleWidth:7,padding:10}}},scales:{x:{ticks:{color:'#6B7394',font:{size:10,family:'Inter'}},grid:{color:'rgba(140,155,200,0.04)'},border:{display:false}},y:{ticks:{color:'#6B7394',font:{size:10,family:'Inter'}},grid:{color:'rgba(140,155,200,0.04)'},border:{display:false},beginAtZero:true}}};}
+const ENG_COLORS=['#4AC8E8','#5B8DEF','#3DD68C'];
+function engSwitch(idx){
+  if(!window._engChart)return;
+  const c=window._engChart;
+  c.data.datasets.forEach((ds,i)=>{ds.hidden=i!==idx;});
+  c.update();
+  const btns=document.querySelectorAll('#engToggle button');
+  btns.forEach((b,i)=>{b.style.background=i===idx?ENG_COLORS[i]:'var(--bg)';b.style.color=i===idx?'#fff':'var(--text-tertiary)';});
+}
+function cOpts(){return{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#A0A8C0',font:{size:10,family:'Inter'},usePointStyle:true,pointStyleWidth:7,padding:10,generateLabels:function(chart){return chart.data.datasets.map((ds,i)=>({text:ds.label,fillStyle:ds.hidden?'rgba(100,100,100,0.3)':ds.backgroundColor,strokeStyle:'transparent',lineWidth:0,pointStyle:'circle',hidden:false,datasetIndex:i}));}}}},scales:{x:{ticks:{color:'#6B7394',font:{size:10,family:'Inter'}},grid:{color:'rgba(140,155,200,0.04)'},border:{display:false}},y:{ticks:{color:'#6B7394',font:{size:10,family:'Inter'}},grid:{color:'rgba(140,155,200,0.04)'},border:{display:false},beginAtZero:true}}};}
 function fmt(n){if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return String(n||0);}
 
 // ── Config ──

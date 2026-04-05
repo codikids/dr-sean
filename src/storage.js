@@ -78,6 +78,9 @@ export async function logMessage(env, log) {
     const isDup = allLogs.some(l => l.senderId === entry.senderId && l.timestamp === entry.timestamp);
     if (isDup) return;
 
+    // 같은 사용자의 이전 로그 자동 reviewed 처리
+    const key = entry.username || entry.senderId;
+    if (key) allLogs.forEach(l => { if ((l.username || l.senderId) === key && !l.reviewed) l.reviewed = true; });
     allLogs.unshift(entry);
     // 최대 400개 유지 (KV 512KB 한도 안전)
     if (allLogs.length > 400) allLogs = allLogs.slice(0, 400);
