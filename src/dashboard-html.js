@@ -495,6 +495,20 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
       </div>
     </div>
 
+    <!-- 4.5. Concern Buttons -->
+    <div class="setting-section">
+      <div class="setting-header" onclick="toggleSetting(this)">
+        <div class="setting-icon" style="background:rgba(169,132,255,0.12);color:#A984FF;"><svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2" stroke="currentColor" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="setting-info"><div class="setting-title">Concern Buttons</div><div class="setting-desc">Quick reply options for skin concern selection</div></div>
+        <span class="setting-arrow">&#9660;</span>
+      </div>
+      <div class="setting-body">
+        <p style="font-size:12px;color:var(--text-tertiary);margin-bottom:10px;line-height:1.5;">After country selection, patients choose their concern. "Others" lets them type freely. Comma separated.</p>
+        <input class="form-input" id="concernOptions" placeholder="e.g. Botox, Filler, Lifting, Anti-aging, Acne, Skincare, Others">
+        <button class="btn-save-card" onclick="saveConfig()">Save</button>
+      </div>
+    </div>
+
     <!-- 5. AI Consultation Prompt -->
     <div class="setting-section">
       <div class="setting-header" onclick="toggleSetting(this)">
@@ -664,6 +678,7 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
         <div class="modal-section-title">Patient Info</div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
           <span class="badge badge-country" id="modalCountry"></span>
+          <span class="badge" id="modalPurpose" style="display:none;"></span>
           <span class="badge badge-tag" id="modalConcern" style="display:none;"></span>
           <span class="badge" id="modalFunnel"></span>
           <span class="badge" id="modalVipBadge" style="display:none;"></span>
@@ -1007,6 +1022,7 @@ async function loadConfig(){
   if(!document.getElementById('aiPrompt').value) document.getElementById('aiPrompt').value=DEFAULT_PROMPT;
   // 국가 버튼
   document.getElementById('countryOptions').value = (config.countryOptions || ['United States','Singapore','Australia','Canada','Others']).join(', ');
+  document.getElementById('concernOptions').value = (config.concernOptions || ['Botox','Filler','Lifting','Anti-aging','Acne','Skincare','Others']).join(', ');
   // AI Integration
   document.getElementById('claudeApiKey').value = config.claudeApiKey || '';
   document.getElementById('claudeModel').value = config.claudeModel || 'claude-haiku-4-5-20251001';
@@ -1031,6 +1047,8 @@ async function saveConfig(){
   config.botStartFollowers = parseInt(document.getElementById('botStartFollowers').value) || 0;
   const coVal = document.getElementById('countryOptions').value;
   config.countryOptions = coVal ? coVal.split(',').map(s=>s.trim()).filter(Boolean) : null;
+  const ccVal = document.getElementById('concernOptions').value;
+  config.concernOptions = ccVal ? ccVal.split(',').map(s=>s.trim()).filter(Boolean) : null;
   collectCommentRules();
   collectKw();
   const saveBtns=document.querySelectorAll('[onclick="saveConfig()"]');
@@ -1112,20 +1130,22 @@ async function loadInsights(){
 
     // 데이터 집계
     const users=new Set(activeLogs.map(l=>l.username).filter(Boolean));
-    const concerns={},countries={};
+    const concerns={},countries={},countryRawMap={};
     activeLogs.forEach(l=>{
       const t=l.tag;
-      if(t&&t!=='stuck'&&t!=='paused'&&t!=='direct'&&t!=='consultation')concerns[t]=(concerns[t]||0)+1;
-      const c=cleanC(l.country);if(c)countries[c]=(countries[c]||0)+1;
+      if(t&&!SKIP_TAGS.has(t))concerns[t]=(concerns[t]||0)+1;
+      const c=cleanC(l.country);if(c){countries[c]=(countries[c]||0)+1;if(!countryRawMap[c])countryRawMap[c]=l.country;}
     });
     const topConcerns=Object.entries(concerns).sort((a,b)=>b[1]-a[1]).slice(0,5);
     const topCountries=Object.entries(countries).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    const maxConcern=topConcerns[0]?topConcerns[0][1]:1;
+    const maxCountry=topCountries[0]?topCountries[0][1]:1;
 
     // 퍼널 계산
     const stages={follow:0,stuck:0,interest:0,consulted:0};
-    const userLogs={};
-    activeLogs.forEach(l=>{const k=l.username||'';if(!k)return;if(!userLogs[k])userLogs[k]=[];userLogs[k].push(l);});
-    Object.entries(userLogs).forEach(([k,ul])=>{
+    const userLogsMap={};
+    activeLogs.forEach(l=>{const k=l.username||'';if(!k)return;if(!userLogsMap[k])userLogsMap[k]=[];userLogsMap[k].push(l);});
+    Object.entries(userLogsMap).forEach(([k,ul])=>{
       const country=ul.find(l=>cleanC(l.country))?.country||'';
       const stage=getUserStage(ul,country);
       stages[stage]++;
@@ -1133,76 +1153,107 @@ async function loadInsights(){
     const totalFunnel=stages.follow+stages.stuck+stages.interest+stages.consulted;
     const convRate=totalFunnel>0?Math.round(stages.consulted/totalFunnel*100):0;
     const stuckRate=totalFunnel>0?Math.round(stages.stuck/totalFunnel*100):0;
+    const bookedCount=Object.values(patientData).filter(p=>p.booked).length;
 
-    // Booking intent
-    const bookKw=['book','appointment','schedule','reserve','i want to come','i want to visit','planning to come','planning to visit','fly to korea','travel to korea'];
-    const bookedIntent=new Set(activeLogs.filter(l=>bookKw.some(k=>(l.received||'').toLowerCase().includes(k))).map(l=>l.username)).size;
+    // 시간대 분석 (24시간)
+    const hours=Array(24).fill(0);
+    activeLogs.forEach(l=>{if(l.createdAt){const h=new Date(l.createdAt).getUTCHours();hours[h]++;}});
+    const maxHour=Math.max(...hours)||1;
+    const peakH=hours.indexOf(Math.max(...hours));
+    const peakStr=(peakH%12||12)+(peakH<12?'AM':'PM');
 
-    // 시간대 분석
-    const hours={};
-    activeLogs.forEach(l=>{if(l.createdAt){const h=new Date(l.createdAt).getUTCHours();hours[h]=(hours[h]||0)+1;}});
-    const peakHour=Object.entries(hours).sort((a,b)=>b[1]-a[1])[0];
+    // 바 색상
+    const CC=['#5B8DEF','#3DD68C','#F0B24A','#E879F9','#48C8E8','#FF6B6B','#A984FF','#6AAE8E'];
 
-    // AI 스타일 인사이트 카드 생성
-    const cards=[];
+    // ── 카드 생성 ──
+    let html='';
 
-    // 1. 요약
-    cards.push('<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;">'+
-      '<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A984FF" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg><span style="font-size:11px;font-weight:700;color:#A984FF;text-transform:uppercase;">Overview</span></div>'+
-      '<div style="font-size:13px;color:var(--text-secondary);line-height:1.7;">'+
-      'You have <b style="color:var(--text);">'+users.size+' patients</b> in your funnel. '+
-      '<b style="color:var(--green);">'+convRate+'%</b> have reached the consultation stage. '+
-      (stuckRate>20?'<span style="color:var(--amber);">'+stuckRate+'% are stuck in the country selection — consider simplifying the flow.</span> ':'')+
-      (bookedIntent>0?bookedIntent+' patient'+(bookedIntent>1?'s':'')+' have expressed <b style="color:#E879F9;">booking intent</b>. ':'')+
-      '</div></div>');
+    // 1. Hero — 핵심 수치 4개
+    html+=\`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px;">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 8px;text-align:center;">
+        <div style="font-size:22px;font-weight:800;color:var(--text);">\${users.size}</div>
+        <div style="font-size:8px;color:var(--text-tertiary);font-weight:600;margin-top:2px;">PATIENTS</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 8px;text-align:center;">
+        <div style="font-size:22px;font-weight:800;color:var(--green);">\${convRate}%</div>
+        <div style="font-size:8px;color:var(--text-tertiary);font-weight:600;margin-top:2px;">CONSULTED</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 8px;text-align:center;">
+        <div style="font-size:22px;font-weight:800;color:#E879F9;">\${bookedCount}</div>
+        <div style="font-size:8px;color:var(--text-tertiary);font-weight:600;margin-top:2px;">BOOKED</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 8px;text-align:center;">
+        <div style="font-size:22px;font-weight:800;color:var(--accent);">\${peakStr}</div>
+        <div style="font-size:8px;color:var(--text-tertiary);font-weight:600;margin-top:2px;">PEAK TIME</div>
+      </div>
+    </div>\`;
 
-    // 2. Top Concerns
+    // 2. AI Summary
+    const summaryParts=[];
+    summaryParts.push('You have <b>'+users.size+' active patients</b> across <b>'+Object.keys(countries).length+' countries</b>.');
+    if(convRate>=50)summaryParts.push('<span style="color:var(--green);">Strong conversion rate at '+convRate+'%.</span>');
+    else if(convRate>=30)summaryParts.push('Conversion rate is '+convRate+'% — room to grow.');
+    else summaryParts.push('<span style="color:var(--amber);">Conversion rate is '+convRate+'% — focus on engaging Interest patients.</span>');
+    if(stages.stuck>0)summaryParts.push('<span style="color:var(--amber);">'+stages.stuck+' patient'+(stages.stuck>1?'s are':' is')+' stuck in onboarding.</span> Reach out directly via DM.');
+    if(bookedCount>0)summaryParts.push('<span style="color:#E879F9;">'+bookedCount+' booking'+(bookedCount>1?'s':'')+ ' confirmed!</span>');
+    html+=\`<div style="background:linear-gradient(135deg,rgba(169,132,255,0.08),rgba(91,141,239,0.06));border:1px solid rgba(169,132,255,0.2);border-radius:var(--radius);padding:16px;">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+        <div style="width:20px;height:20px;border-radius:6px;background:rgba(169,132,255,0.15);display:flex;align-items:center;justify-content:center;">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#A984FF" stroke-width="2.5" stroke-linecap="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        </div>
+        <span style="font-size:11px;font-weight:700;color:#A984FF;">AI SUMMARY</span>
+      </div>
+      <div style="font-size:12px;color:var(--text-secondary);line-height:1.8;">\${summaryParts.join(' ')}</div>
+    </div>\`;
+
+    // 3. Top Concerns — 바 차트
     if(topConcerns.length){
-      cards.push('<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;">'+
-        '<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span style="font-size:11px;font-weight:700;color:var(--cyan);text-transform:uppercase;">Top Concerns</span></div>'+
-        '<div style="font-size:13px;color:var(--text-secondary);line-height:1.7;">'+
-        'The most asked-about treatments are: '+topConcerns.map(([t,c])=>'<span class="badge badge-tag" style="margin:0 2px;">'+esc(t)+'</span> ('+c+')').join(', ')+'. '+
-        (topConcerns[0]?'<b style="color:var(--text);">'+esc(topConcerns[0][0])+'</b> leads with '+topConcerns[0][1]+' inquiries.':'')+
-        '</div></div>');
+      html+=\`<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-top:10px;">
+        <div style="font-size:11px;font-weight:700;color:var(--cyan);text-transform:uppercase;margin-bottom:12px;">Top Concerns</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          \${topConcerns.map(([t,c],i)=>'<div style="display:flex;align-items:center;gap:8px;"><div style="width:80px;font-size:11px;font-weight:600;color:var(--text-secondary);text-align:left;flex-shrink:0;">'+esc(t)+'</div><div style="flex:1;height:20px;background:var(--bg);border-radius:4px;overflow:hidden;"><div style="height:100%;width:'+Math.round(c/maxConcern*100)+'%;background:'+CC[i%CC.length]+';border-radius:4px;"></div></div><div style="font-size:11px;font-weight:700;color:var(--text);width:20px;">'+c+'</div></div>').join('')}
+        </div>
+      </div>\`;
     }
 
-    // 3. Country Distribution
+    // 4. Patient Geography — 바 차트 + 국기
     if(topCountries.length){
-      cards.push('<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;">'+
-        '<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg><span style="font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase;">Patient Geography</span></div>'+
-        '<div style="font-size:13px;color:var(--text-secondary);line-height:1.7;">'+
-        'Your patients come from <b style="color:var(--text);">'+Object.keys(countries).length+' countries</b>. '+
-        'Top regions: '+topCountries.map(([c,n])=>esc(c)+' ('+n+')').join(', ')+'. '+
-        '</div></div>');
+      html+=\`<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-top:10px;">
+        <div style="font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase;margin-bottom:12px;">Patient Geography · \${Object.keys(countries).length} countries</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          \${topCountries.map(([c,n],i)=>{const raw=countryRawMap[c]||c;const emoji=(raw.match(/[\\u{1F1E0}-\\u{1F1FF}]{2}/u)||[''])[0];return '<div style="display:flex;align-items:center;gap:8px;"><div style="width:80px;font-size:11px;font-weight:600;color:var(--text-secondary);text-align:left;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+emoji+' '+esc(c)+'</div><div style="flex:1;height:20px;background:var(--bg);border-radius:4px;overflow:hidden;"><div style="height:100%;width:'+Math.round(n/maxCountry*100)+'%;background:'+CC[(i+2)%CC.length]+';border-radius:4px;"></div></div><div style="font-size:11px;font-weight:700;color:var(--text);width:20px;">'+n+'</div></div>';}).join('')}
+        </div>
+      </div>\`;
     }
 
-    // 4. Funnel Health
-    cards.push('<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;">'+
-      '<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2" stroke-linecap="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg><span style="font-size:11px;font-weight:700;color:var(--amber);text-transform:uppercase;">Funnel Health</span></div>'+
-      '<div style="font-size:13px;color:var(--text-secondary);line-height:1.7;">'+
-      '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px;">'+
-      '<span>Follow <b style="color:var(--red);">'+stages.follow+'</b></span>'+
-      '<span>Stuck <b style="color:var(--amber);">'+stages.stuck+'</b></span>'+
-      '<span>Interest <b style="color:var(--cyan);">'+stages.interest+'</b></span>'+
-      '<span>Consulted <b style="color:var(--green);">'+stages.consulted+'</b></span>'+
-      '</div>'+
-      (stages.stuck>0?'<span style="color:var(--amber);">⚠ '+stages.stuck+' patient'+(stages.stuck>1?'s are':' is')+' stuck.</span> Consider reaching out directly. ':'')+
-      'Consultation rate: <b style="color:var(--green);">'+convRate+'%</b>'+
-      '</div></div>');
+    // 5. Funnel Health — 시각적 바
+    const funnelData=[{l:'Follow',c:stages.follow,cl:'var(--red)'},{l:'Stuck',c:stages.stuck,cl:'var(--amber)'},{l:'Interest',c:stages.interest,cl:'var(--cyan)'},{l:'Consulted',c:stages.consulted,cl:'var(--green)'},{l:'Booked',c:bookedCount,cl:'#E879F9'}];
+    const maxF=Math.max(...funnelData.map(f=>f.c))||1;
+    html+=\`<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-top:10px;">
+      <div style="font-size:11px;font-weight:700;color:var(--amber);text-transform:uppercase;margin-bottom:12px;">Funnel Health · \${convRate}% conversion</div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        \${funnelData.map(f=>'<div style="display:flex;align-items:center;gap:8px;"><div style="width:80px;font-size:10px;font-weight:600;color:var(--text-tertiary);text-align:left;flex-shrink:0;">'+f.l+'</div><div style="flex:1;height:16px;background:var(--bg);border-radius:3px;overflow:hidden;"><div style="height:100%;width:'+Math.max(Math.round(f.c/maxF*100),f.c>0?8:0)+'%;background:'+f.cl+';border-radius:3px;transition:width 0.5s;"></div></div><div style="font-size:11px;font-weight:700;color:'+f.cl+';width:20px;">'+f.c+'</div></div>').join('')}
+      </div>
+      \${stages.stuck>0?'<div style="margin-top:10px;padding:8px 10px;background:rgba(240,178,74,0.08);border-radius:6px;font-size:11px;color:var(--amber);"><b>⚠ Action needed:</b> '+stages.stuck+' patient'+(stages.stuck>1?'s are':' is')+' stuck. <span onclick="switchTab(\\'logs\\',null);filterByFunnel(\\'stuck\\')" style="text-decoration:underline;cursor:pointer;">View stuck patients →</span></div>':''}
+    </div>\`;
 
-    // 5. Peak Activity
-    if(peakHour){
-      const h=parseInt(peakHour[0]);
-      const timeStr=(h%12||12)+(h<12?'AM':'PM');
-      cards.push('<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;">'+
-        '<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;">Peak Activity</span></div>'+
-        '<div style="font-size:13px;color:var(--text-secondary);line-height:1.7;">'+
-        'Most DMs arrive around <b style="color:var(--text);">'+timeStr+' UTC</b>. '+
-        'This is when your audience is most active — ideal time for posting content.'+
-        '</div></div>');
-    }
+    // 6. Activity Heatmap — 24시간
+    html+=\`<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-top:10px;">
+      <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;margin-bottom:12px;">DM Activity · 24h Heatmap</div>
+      <div style="display:flex;gap:2px;align-items:flex-end;height:50px;">
+        \${hours.map((c,h)=>'<div title="'+((h%12||12)+(h<12?'AM':'PM'))+': '+c+' DMs" style="flex:1;background:'+(c>0?'var(--accent)':'var(--bg)')+';opacity:'+(c>0?Math.max(0.3,c/maxHour):0.15)+';height:'+Math.max(Math.round(c/maxHour*100),4)+'%;border-radius:2px;cursor:default;"></div>').join('')}
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:4px;">
+        <span style="font-size:8px;color:var(--text-tertiary);">12AM</span>
+        <span style="font-size:8px;color:var(--text-tertiary);">6AM</span>
+        <span style="font-size:8px;color:var(--text-tertiary);">12PM</span>
+        <span style="font-size:8px;color:var(--text-tertiary);">6PM</span>
+        <span style="font-size:8px;color:var(--text-tertiary);">11PM</span>
+      </div>
+      <div style="margin-top:8px;font-size:11px;color:var(--text-secondary);">Peak hour: <b style="color:var(--text);">\${peakStr} UTC</b> — best time to post for maximum engagement.</div>
+    </div>\`;
 
-    el.innerHTML=cards.join('');
+    el.innerHTML=html;
   }catch(e){
     console.error('loadInsights error:',e);
     el.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-tertiary);">Failed to load insights.</div>';
@@ -1280,13 +1331,39 @@ function renderTodaySummary(logs){
   const nfCount=Object.values(userAllNotFollow).filter(Boolean).length;
   // Booked 카운트 (수동 마킹)
   const bookedCount=Object.values(patientData).filter(p=>p.booked).length;
+  // Purpose 카운트 (business 무조건 유지, booking은 concern 있으면 skin 전환)
+  const purposeCounts={skin:0,booking:0,business:0};
+  Object.keys(userMap).forEach(k=>{
+    const uLogs=logs.filter(l=>(l.username||l.senderId)===k);
+    const hasBiz=uLogs.some(l=>l.tag==='business');
+    const hasBook=uLogs.some(l=>l.tag==='booking');
+    const hasConcern=uLogs.some(l=>l.tag&&!SKIP_TAGS.has(l.tag));
+    if(hasBiz){purposeCounts.business++;}
+    else if(hasBook&&!hasConcern)purposeCounts.booking++;
+    else purposeCounts.skin++;
+  });
   el.innerHTML=\`
     <div class="summary-card"><div class="stat-label">Today's DMs</div><div class="stat-value">\${todayLogs.length}</div></div>
     <div class="summary-card"><div class="stat-label">Unreviewed</div><div class="stat-value" style="color:\${unreviewed>0?'var(--amber)':'var(--green)'}">\${unreviewed}</div></div>
     <div class="summary-card"><div class="stat-label">Top Country Today</div><div class="stat-value" style="font-size:13px;">\${topC?esc(shortC(countryRawToday[topC[0]]||topC[0])):'-'}</div></div>
     <div class="summary-card"><div class="stat-label">Top Concern Today</div><div class="stat-value" style="font-size:13px;">\${topT?topT[0]:'-'}</div></div>
 \`; el.innerHTML+=\`
-    <div class="summary-card" style="grid-column:span 2;"><div class="stat-label">Patient Funnel</div>
+    <div style="grid-column:span 2;display:flex;gap:6px;">
+      <div onclick="filterByPurpose('skin')" class="stat-card" style="flex:1;cursor:pointer;padding:10px;">
+        <div class="stat-label" style="color:var(--green);">Skin</div>
+        <div class="stat-value" style="color:var(--green);">\${purposeCounts.skin}</div>
+      </div>
+      <div onclick="filterByPurpose('booking')" class="stat-card" style="flex:1;cursor:pointer;padding:10px;">
+        <div class="stat-label" style="color:#5B8DEF;">Booking</div>
+        <div class="stat-value" style="color:#5B8DEF;">\${purposeCounts.booking}</div>
+      </div>
+      <div onclick="filterByPurpose('business')" class="stat-card" style="flex:1;cursor:pointer;padding:10px;">
+        <div class="stat-label" style="color:#FF8C42;">Business</div>
+        <div class="stat-value" style="color:#FF8C42;">\${purposeCounts.business}</div>
+      </div>
+    </div>
+\`; el.innerHTML+=\`
+    <div class="summary-card" style="grid-column:span 2;"><div class="stat-label">Patient Funnel <span style="font-size:8px;color:var(--text-tertiary);font-weight:500;text-transform:none;">(Skin only)</span></div>
       <div style="display:flex;gap:4px;margin-top:8px;flex-wrap:nowrap;">
         <div onclick="filterByFunnel('notfollow')" style="flex:1;text-align:center;padding:6px 2px;background:var(--bg);border-radius:8px;cursor:pointer;min-width:0;">
           <div style="font-size:16px;font-weight:800;color:var(--text-tertiary);">\${nfCount}</div>
@@ -1330,8 +1407,14 @@ function renderTodaySummary(logs){
   \`;
 }
 
-let funnelFilter='';
+let funnelFilter='',purposeFilter='';
+function filterByPurpose(type){
+  if(purposeFilter===type){purposeFilter='';} else {purposeFilter=type;}
+  funnelFilter='';
+  applyFilters();
+}
 function filterByFunnel(type){
+  purposeFilter='';
   if(funnelFilter===type){funnelFilter='';} else {funnelFilter=type;}
   // 퍼널 항목 active 표시
   document.querySelectorAll('.funnel-item').forEach(el=>el.style.outline='none');
@@ -1394,36 +1477,39 @@ function applyFilters(){
   if(tag!=='all') logs=logs.filter(l=>l.tag===tag);
   if(search) logs=logs.filter(l=>(l.username||'').toLowerCase().includes(search)||(l.received||'').toLowerCase().includes(search)||(l.replied||'').toLowerCase().includes(search));
   if(showUnreviewedOnly) logs=logs.filter(l=>!l.reviewed);
-  // 퍼널 필터 — 사용자 기준으로 최종 단계 계산
+  // Purpose 필터
+  if(purposeFilter){
+    const umNF={};
+    allLogs.forEach(l=>{const k=l.username||'';if(!k)return;if(!(k in umNF))umNF[k]=true;if(!(l.replied||'').includes('[Follow request - not following]'))umNF[k]=false;});
+    const userPurpose={};
+    allLogs.forEach(l=>{const k=l.username||l.senderId||'';if(!k||umNF[k])return;if(!userPurpose[k])userPurpose[k]='skin';if(l.tag==='business')userPurpose[k]='business';if(l.tag==='booking'&&userPurpose[k]!=='business')userPurpose[k]='booking';if(l.tag&&!SKIP_TAGS.has(l.tag)&&userPurpose[k]!=='business')userPurpose[k]='skin';});
+    if(purposeFilter==='skin'){
+      // skin = 퍼널 전체 (business/booking 제외)
+      const skinUsers=new Set(Object.entries(userPurpose).filter(([k,v])=>v==='skin').map(([k])=>k));
+      logs=logs.filter(l=>skinUsers.has(l.username||l.senderId||''));
+    }else{
+      const pUsers=new Set(Object.entries(userPurpose).filter(([k,v])=>v===purposeFilter).map(([k])=>k));
+      logs=logs.filter(l=>pUsers.has(l.username||l.senderId||''));
+    }
+  }
+  // 퍼널 필터 — getUserStage 통일
   if(funnelFilter){
-    const um={},umNotFollow={};
-    allLogs.forEach(l=>{
-      const key=l.username||l.senderId||'';if(!key)return;
-      if(!um[key])um[key]={follow:false,stuck:false,interest:false,consulted:false};
-      if(!(key in umNotFollow))umNotFollow[key]=true;
-      if(!(l.replied||'').includes('[Follow request - not following]'))umNotFollow[key]=false;
-      if((l.replied||'').includes('[Follow request'))um[key].follow=true;
-      if(l.tag==='stuck')um[key].stuck=true;
-      if(l.tag&&l.tag!=='stuck'&&l.tag!=='paused'&&l.tag!=='direct')um[key].consulted=true;
-      if(cleanC(l.country)&&!l.tag)um[key].interest=true;
-    });
+    const umNF={};
+    allLogs.forEach(l=>{const k=l.username||'';if(!k)return;if(!(k in umNF))umNF[k]=true;if(!(l.replied||'').includes('[Follow request - not following]'))umNF[k]=false;});
     if(funnelFilter==='notfollow'){
-      const nfUsers=new Set(Object.entries(umNotFollow).filter(([k,v])=>v).map(([k])=>k));
+      const nfUsers=new Set(Object.entries(umNF).filter(([k,v])=>v).map(([k])=>k));
       logs=logs.filter(l=>nfUsers.has(l.username||l.senderId||''));
     }else if(funnelFilter==='booked'){
       const bUsers=new Set(Object.entries(patientData).filter(([k,v])=>v.booked).map(([k])=>k));
       logs=logs.filter(l=>bUsers.has(l.username||l.senderId||''));
     }else{
-      // 미팔로우 사용자 제외
-      Object.keys(umNotFollow).forEach(k=>{if(umNotFollow[k])delete um[k];});
+      // getUserStage 기반 필터
+      const userLogsMap={};
+      allLogs.forEach(l=>{const k=l.username||l.senderId||'';if(!k||umNF[k])return;if(!userLogsMap[k])userLogsMap[k]=[];userLogsMap[k].push(l);});
       const fUsers=new Set();
-      Object.entries(um).forEach(([k,u])=>{
-        let stage='';
-        if(u.consulted)stage='consulted';
-        else if(u.interest)stage='interest';
-        else if(u.stuck)stage='stuck';
-        else stage='follow';
-        if(stage===funnelFilter)fUsers.add(k);
+      Object.entries(userLogsMap).forEach(([k,ul])=>{
+        const country=ul.find(l=>cleanC(l.country))?.country||'';
+        if(getUserStage(ul,country)===funnelFilter)fUsers.add(k);
       });
       logs=logs.filter(l=>fUsers.has(l.username||l.senderId||''));
     }
@@ -1460,10 +1546,13 @@ function renderLogs(){
     const key=l.username||l.senderId||'';
     if(!key||notFollowUsers.has(key))return;
     const t=l.tag;
-    if(t&&t!=='stuck'&&t!=='paused'&&t!=='direct'&&t!=='consultation'){
+    if(t&&!SKIP_TAGS.has(t)){
       if(!userBestTag[key])userBestTag[key]=t;
     }
   });
+  // 사용자별 purpose 맵
+  const userPurposeMap={};
+  allLogs.forEach(l=>{const k=l.username||l.senderId||'';if(!k)return;if(!userPurposeMap[k])userPurposeMap[k]='skin';if(l.tag==='business')userPurposeMap[k]='business';if(l.tag==='booking'&&userPurposeMap[k]!=='business')userPurposeMap[k]='booking';if(l.tag&&!SKIP_TAGS.has(l.tag)&&userPurposeMap[k]!=='business')userPurposeMap[k]='skin';});
   let idx=0;
   el.innerHTML=pg.map(l=>{
     const id='log-'+s+'-'+(idx++);
@@ -1482,12 +1571,14 @@ function renderLogs(){
         </div>
         <div class="log-time-relative">\${ago}</div>
       </div>
-      <div style="display:flex;gap:4px;flex-wrap:wrap;margin:-4px 0 6px;">
-        \${!noCountry?'<span class="badge badge-country">'+esc(shortC(l.country))+'</span>':''}
-        \${userBestTag[l.username||l.senderId]?'<span class="badge badge-tag">'+esc(userBestTag[l.username||l.senderId])+'</span>':''}
-        \${getFunnelBadge(l,userBestTag,notFollowUsers)}
-        \${isVip?'<span class="badge badge-vip">VIP</span>':''}
-        \${isPaused?'<span class="badge badge-paused">Bot Paused</span>':''}
+      <div style="display:flex;align-items:center;gap:0;margin:-4px 0 6px;font-size:10px;font-weight:600;flex-wrap:nowrap;overflow:hidden;">
+        \${(()=>{const k=l.username||l.senderId;const nf=notFollowUsers.has(k);const parts=[];
+          if(!noCountry)parts.push('<span style="color:#7EB0D5;">'+esc(shortC(l.country))+'</span>');
+          if(!nf){const p=userPurposeMap[k];if(p==='business')parts.push('<span style="color:#FF8C42;">Business</span>');else if(p==='booking')parts.push('<span style="color:#5B8DEF;">Booking</span>');else parts.push('<span style="color:var(--green);">Skin</span>');}
+          const bt=userBestTag[k];if(bt)parts.push('<span style="color:#A984FF;">'+esc(bt)+'</span>');
+          const badge=getFunnelBadge(l,userBestTag,notFollowUsers);if(badge)parts.push(badge);
+          return parts.join('<span style="color:var(--border);margin:0 6px;">│</span>');
+        })()}
       </div>
       <div class="log-bubble log-bubble-in"><div class="log-bubble-label">Received</div><div>\${esc(l.received)}</div></div>
       <div class="log-bubble log-bubble-out"><div class="log-bubble-label">Replied</div><div class="log-bubble-text\${longReply?'':' expanded'}" id="\${id}">\${esc(l.replied)}</div>\${longReply?'<button class="log-expand" onclick="toggleLogExpand(\\''+id+'\\',this)">Show more</button>':''}</div>
@@ -1501,11 +1592,10 @@ function renderLogs(){
   }catch(e){console.error('renderLogs error:',e);el.innerHTML='<p class="empty">Error rendering logs.</p>';}
 }
 // 공용 퍼널 단계 계산 — 모든 곳에서 이 함수 사용
+const SKIP_TAGS=new Set(['','stuck','paused','direct','consultation','none','business','booking']);
 function getUserStage(userLogs,country){
-  const hasConsulted=userLogs.some(l=>l.tag&&l.tag!=='stuck'&&l.tag!=='paused'&&l.tag!=='direct'&&l.tag!=='consultation');
+  const hasConsulted=userLogs.some(l=>l.tag&&!SKIP_TAGS.has(l.tag));
   if(hasConsulted)return'consulted';
-  const hasSkinTag=userLogs.some(l=>l.tag&&l.tag!=='stuck'&&l.tag!=='paused'&&l.tag!=='direct');
-  if(hasSkinTag)return'consulted';
   const hasStuck=userLogs.some(l=>l.tag==='stuck');
   if(hasStuck)return'stuck';
   const hasCountry=!!country;
@@ -1515,14 +1605,13 @@ function getUserStage(userLogs,country){
 function getFunnelBadge(l,ubt,nfUsers){
   const key=l.username||l.senderId||'';
   // 미팔로우 사용자
-  if(nfUsers&&nfUsers.has(key))return'<span class="badge" style="background:rgba(100,100,100,0.2);color:var(--text-tertiary);">Not following</span>';
-  // 해당 사용자의 전체 로그 기반으로 판단
+  if(nfUsers&&nfUsers.has(key))return'<span style="color:var(--text-tertiary);">Not following</span>';
   const userLogs=allLogs.filter(x=>(x.username||x.senderId)===(l.username||l.senderId));
   const country=userLogs.find(x=>cleanC(x.country))?.country||'';
   const stage=getUserStage(userLogs,country);
-  const styles={consulted:'background:var(--green-soft);color:var(--green);',interest:'background:rgba(74,200,232,0.12);color:var(--cyan);',stuck:'background:rgba(240,178,74,0.12);color:var(--amber);',follow:'background:var(--red-soft);color:var(--red);'};
-  const labels={consulted:'Consulted',interest:'Interest only',stuck:'Stuck',follow:'Follow only'};
-  return '<span class="badge" style="'+styles[stage]+'">'+(labels[stage])+'</span>';
+  const colors={consulted:'var(--green)',interest:'var(--cyan)',stuck:'var(--amber)',follow:'var(--red)'};
+  const labels={consulted:'Consulted',interest:'Interest',stuck:'Stuck',follow:'Follow'};
+  return'<span style="color:'+(colors[stage]||'var(--text-tertiary)')+';">'+(labels[stage]||'')+'</span>';
 }
 function toggleLogExpand(id,btn){const el=document.getElementById(id);if(!el)return;el.classList.toggle('expanded');btn.textContent=el.classList.contains('expanded')?'Show less':'Show more';}
 function pl(){if(lp>0){lp--;renderLogs();}}
@@ -1532,9 +1621,18 @@ function esc(s){const d=document.createElement('div');d.textContent=s||'';return
 // ── Review Toggle ──
 async function toggleReview(idx){
   if(!allLogs[idx])return;
-  allLogs[idx].reviewed=!allLogs[idx].reviewed;
-  renderLogs();
-  await fetch('/api/logs/review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({index:idx,reviewed:allLogs[idx].reviewed})});
+  const newState=!allLogs[idx].reviewed;
+  const username=allLogs[idx].username||allLogs[idx].senderId;
+  // 같은 사용자의 전체 로그를 함께 처리
+  const promises=[];
+  allLogs.forEach((l,i)=>{
+    if((l.username||l.senderId)===username){
+      l.reviewed=newState;
+      promises.push(fetch('/api/logs/review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({index:i,reviewed:newState})}));
+    }
+  });
+  renderLogs();renderTodaySummary(allLogs);
+  await Promise.all(promises);
 }
 
 // ── Direct Reply ──
@@ -1557,9 +1655,17 @@ function openPatient(username,senderId){
   document.getElementById('modalCountry').textContent=country?shortC(country):'No country';
   // 미팔로우 체크
   const isNotFollow=userLogs.length>0&&userLogs.every(l=>(l.replied||'').includes('[Follow request - not following]'));
+  // Purpose 표시
+  const pEl=document.getElementById('modalPurpose');
+  const hasBiz=userLogs.some(l=>l.tag==='business');
+  const hasBooking=userLogs.some(l=>l.tag==='booking');
+  if(hasBiz){pEl.textContent='Business';pEl.style.cssText='display:inline;background:rgba(255,140,66,0.12);color:#FF8C42;';}
+  else if(hasBooking){pEl.textContent='Booking';pEl.style.cssText='display:inline;background:rgba(91,141,239,0.12);color:#5B8DEF;';}
+  else if(!isNotFollow){pEl.textContent='Skin';pEl.style.cssText='display:inline;background:rgba(61,214,140,0.08);color:var(--green);';}
+  else{pEl.style.display='none';}
   // Concern tag + Funnel (getUserStage 공용 함수 사용)
   const stage=getUserStage(userLogs,country);
-  const skinTags=isNotFollow?[]:userLogs.map(l=>l.tag).filter(t=>t&&t!=='stuck'&&t!=='paused'&&t!=='direct'&&t!=='consultation');
+  const skinTags=isNotFollow?[]:userLogs.map(l=>l.tag).filter(t=>t&&!SKIP_TAGS.has(t));
   const bestTag=skinTags[0]||'';
   const cEl=document.getElementById('modalConcern');
   if(bestTag){cEl.textContent=bestTag;cEl.style.display='inline';}else{cEl.style.display='none';}

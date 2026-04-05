@@ -79,6 +79,22 @@ export async function handleDashboardAPI(request, env, path) {
       return json({ ok: true }, 200, cors);
     }
 
+    // POST /api/reset-patient — 환자 KV 데이터 리셋
+    if (path === '/api/reset-patient' && request.method === 'POST') {
+      const { senderId } = await request.json();
+      if (senderId) {
+        await Promise.all([
+          env.KV.delete(`conv:${senderId}`),
+          env.KV.delete(`country:${senderId}`),
+          env.KV.delete(`concern:${senderId}`),
+          env.KV.delete(`purpose:${senderId}`),
+          env.KV.delete(`awaiting_country:${senderId}`),
+          env.KV.delete(`awaiting_concern:${senderId}`),
+        ]);
+      }
+      return json({ ok: true }, 200, cors);
+    }
+
     // POST /api/instagram/refresh — 인스타 캐시 삭제
     if (path === '/api/instagram/refresh' && request.method === 'POST') {
       await env.KV.delete('cache:ig_stats');

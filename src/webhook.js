@@ -74,7 +74,7 @@ export async function handleWebhook(request, env) {
         }
 
         // 답변 생성 (reply + metadata + quickReplies + followUp)
-        const result = await generateReply(text, senderId, env);
+        const result = await generateReply(text, senderId, env, profile.username);
         const reply = result.reply;
         const metadata = result.metadata || {};
         const quickReplies = result.quickReplies || null;
