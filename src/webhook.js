@@ -67,6 +67,13 @@ export async function handleWebhook(request, env) {
           continue;
         }
 
+        // 이모지/스토리 리액션만 온 경우 → AI 답변 안 함, 로그만 기록
+        const isEmojiOnly = /^[\p{Emoji}\p{Emoji_Presentation}\p{Emoji_Modifier}\p{Emoji_Component}\s]+$/u.test(text) && text.trim().length <= 8;
+        if (isEmojiOnly) {
+          if (!isTestUser) await logMessage(env, { senderId, username: profile.username || '', received: text, replied: '[Emoji/reaction — no reply]', timestamp, reviewed: true });
+          continue;
+        }
+
         // 봇 일시정지 환자 → 답장 안 보냄 (로그만 기록)
         if (profile.username && await isPatientPaused(env, profile.username)) {
           if (!isTestUser) await logMessage(env, { senderId, username: profile.username, received: text, replied: '[Bot paused — waiting for manual reply]', timestamp, tag: 'paused' });

@@ -908,13 +908,13 @@ async function loadHome(){
               <div style="font-size:9px;color:var(--text-tertiary);">since \${config.botStartDate}</div>
             </div>
           </div>
-          <div style="margin-top:8px;padding:12px;background:var(--bg);border-radius:8px;border-left:3px solid var(--amber);">
+          <div style="margin-top:8px;padding:12px;background:var(--bg);border-radius:8px;border-left:3px solid #5B8DEF;">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
               <div>
                 <div style="font-size:11px;color:var(--text-secondary);font-weight:700;text-transform:uppercase;">Booking Intent</div>
-                <div style="font-size:10px;color:var(--text-tertiary);margin-top:2px;">Mentioned booking, visiting, or appointments</div>
+                <div style="font-size:10px;color:var(--text-tertiary);margin-top:2px;">Selected "Booking Inquiry" in purpose</div>
               </div>
-              <div style="font-size:28px;font-weight:800;color:var(--amber);flex-shrink:0;">\${(()=>{const bk=['book','appointment','schedule','reserve','i want to come','i want to visit','planning to come','planning to visit','fly to korea','travel to korea','when can i come','i will visit','i will come','see you at','ready to book'];return new Set(logs.filter(l=>bk.some(k=>(l.received||'').toLowerCase().includes(k))).map(l=>l.username||l.senderId)).size;})()}</div>
+              <div style="font-size:28px;font-weight:800;color:#5B8DEF;flex-shrink:0;">\${new Set(logs.filter(l=>l.tag==='booking').map(l=>l.username||l.senderId)).size}</div>
             </div>
           </div>
         </div>\`;
@@ -1343,28 +1343,27 @@ function renderTodaySummary(logs){
     else purposeCounts.skin++;
   });
   el.innerHTML=\`
-    <div class="summary-card"><div class="stat-label">Today's DMs</div><div class="stat-value">\${todayLogs.length}</div></div>
-    <div class="summary-card"><div class="stat-label">Unreviewed</div><div class="stat-value" style="color:\${unreviewed>0?'var(--amber)':'var(--green)'}">\${unreviewed}</div></div>
-    <div class="summary-card"><div class="stat-label">Top Country Today</div><div class="stat-value" style="font-size:13px;">\${topC?esc(shortC(countryRawToday[topC[0]]||topC[0])):'-'}</div></div>
-    <div class="summary-card"><div class="stat-label">Top Concern Today</div><div class="stat-value" style="font-size:13px;">\${topT?topT[0]:'-'}</div></div>
-\`; el.innerHTML+=\`
     <div style="grid-column:span 2;display:flex;gap:6px;">
-      <div onclick="filterByPurpose('skin')" class="stat-card" style="flex:1;cursor:pointer;padding:10px;">
-        <div class="stat-label" style="color:var(--green);">Skin</div>
-        <div class="stat-value" style="color:var(--green);">\${purposeCounts.skin}</div>
+      <div class="stat-card" style="flex:1;padding:10px;">
+        <div class="stat-label">Today</div>
+        <div class="stat-value">\${todayLogs.length}</div>
       </div>
-      <div onclick="filterByPurpose('booking')" class="stat-card" style="flex:1;cursor:pointer;padding:10px;">
-        <div class="stat-label" style="color:#5B8DEF;">Booking</div>
-        <div class="stat-value" style="color:#5B8DEF;">\${purposeCounts.booking}</div>
-      </div>
-      <div onclick="filterByPurpose('business')" class="stat-card" style="flex:1;cursor:pointer;padding:10px;">
-        <div class="stat-label" style="color:#FF8C42;">Business</div>
-        <div class="stat-value" style="color:#FF8C42;">\${purposeCounts.business}</div>
+      <div class="stat-card" style="flex:1;padding:10px;">
+        <div class="stat-label" style="color:\${unreviewed>0?'var(--amber)':'var(--green)'};">Unreviewed</div>
+        <div class="stat-value" style="color:\${unreviewed>0?'var(--amber)':'var(--green)'}">\${unreviewed}</div>
       </div>
     </div>
 \`; el.innerHTML+=\`
-    <div class="summary-card" style="grid-column:span 2;"><div class="stat-label">Patient Funnel <span style="font-size:8px;color:var(--text-tertiary);font-weight:500;text-transform:none;">(Skin only)</span></div>
-      <div style="display:flex;gap:4px;margin-top:8px;flex-wrap:nowrap;">
+    <div class="summary-card" style="grid-column:span 2;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div class="stat-label" style="margin:0;">Patient Funnel</div>
+        <div style="display:flex;gap:10px;font-size:10px;font-weight:600;">
+          <span onclick="filterByPurpose('skin')" style="cursor:pointer;color:var(--green);">Skin \${purposeCounts.skin}</span>
+          <span onclick="filterByPurpose('booking')" style="cursor:pointer;color:#5B8DEF;">Booking \${purposeCounts.booking}</span>
+          <span onclick="filterByPurpose('business')" style="cursor:pointer;color:#FF8C42;">Biz \${purposeCounts.business}</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:4px;flex-wrap:nowrap;">
         <div onclick="filterByFunnel('notfollow')" style="flex:1;text-align:center;padding:6px 2px;background:var(--bg);border-radius:8px;cursor:pointer;min-width:0;">
           <div style="font-size:16px;font-weight:800;color:var(--text-tertiary);">\${nfCount}</div>
           <div style="font-size:8px;color:var(--text-tertiary);margin-top:2px;">No follow</div>
@@ -1592,7 +1591,7 @@ function renderLogs(){
   }catch(e){console.error('renderLogs error:',e);el.innerHTML='<p class="empty">Error rendering logs.</p>';}
 }
 // 공용 퍼널 단계 계산 — 모든 곳에서 이 함수 사용
-const SKIP_TAGS=new Set(['','stuck','paused','direct','consultation','none','business','booking']);
+const SKIP_TAGS=new Set(['','stuck','paused','direct','consultation','none','business','booking','skin']);
 function getUserStage(userLogs,country){
   const hasConsulted=userLogs.some(l=>l.tag&&!SKIP_TAGS.has(l.tag));
   if(hasConsulted)return'consulted';

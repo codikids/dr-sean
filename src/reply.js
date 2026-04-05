@@ -264,10 +264,36 @@ export async function generateReply(text, senderId, env, username) {
       await saveConversation(env, senderId, [...conversation, { role: 'user', text }, { role: 'assistant', text: retryMsg }]);
       return { reply: retryMsg, metadata };
     }
-    metadata.tag = typed.toLowerCase().replace(/\s+/g, '-');
-    await env.KV.put(`concern:${senderId}`, typed, { expirationTtl: 60 * 60 * 24 * 90 });
+    // 키워드 매칭으로 깔끔한 태그 자동 분류
+    const t = typed.toLowerCase();
+    const CONCERN_KEYWORDS = [
+      ['acne','acne'],['pimple','acne'],['breakout','acne'],['zit','acne'],
+      ['wrinkle','anti-aging'],['fine line','anti-aging'],['aging','anti-aging'],['anti-aging','anti-aging'],['saggy','anti-aging'],['sagging','anti-aging'],
+      ['botox','botox'],['filler','filler'],
+      ['lifting','lifting'],['lift','lifting'],['tighten','lifting'],['firm','lifting'],
+      ['dark spot','pigmentation'],['pigment','pigmentation'],['melasma','pigmentation'],['brighten','whitening'],['whiten','whitening'],['glow','whitening'],
+      ['scar','scar'],['scarring','scar'],
+      ['pore','pore'],['blackhead','pore'],
+      ['redness','redness'],['rosacea','redness'],
+      ['oily','oily-skin'],['dry','dry-skin'],['sensitive','sensitive-skin'],['eczema','eczema'],
+      ['dark circle','dark-circles'],['under eye','under-eye'],['eye bag','eye-bag'],
+      ['laser','laser'],['peel','peel'],['thread','thread-lift'],
+      ['nose','rhinoplasty'],['rhinoplasty','rhinoplasty'],
+      ['jawline','jawline'],['jaw','jawline'],['v-line','jawline'],
+      ['facelift','facelift'],['face lift','facelift'],
+      ['hair','hair'],['hair loss','hair'],['bald','hair'],
+      ['lip','lip'],['eyelid','eyelid'],['chin','chin'],['neck','neck'],
+      ['routine','skincare'],['moistur','skincare'],['sunscreen','skincare'],['retinol','skincare'],
+    ];
+    let matchedTag = 'others';
+    for (const [kw, tag] of CONCERN_KEYWORDS) {
+      if (t.includes(kw)) { matchedTag = tag; break; }
+    }
+    metadata.tag = matchedTag;
+    const displayName = matchedTag === 'others' ? typed : matchedTag;
+    await env.KV.put(`concern:${senderId}`, displayName, { expirationTtl: 60 * 60 * 24 * 90 });
     await env.KV.delete(`awaiting_concern:${senderId}`);
-    const concernReply = `${typed} — got it! Let me help you with that 😊`;
+    const concernReply = `${displayName} — got it! Let me help you with that 😊`;
     await saveConversation(env, senderId, [...conversation, { role: 'user', text }, { role: 'assistant', text: concernReply }]);
     return { reply: concernReply, metadata };
   }
