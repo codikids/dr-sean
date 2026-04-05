@@ -680,12 +680,15 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
     <div class="modal-body">
       <div class="modal-section">
         <div class="modal-section-title">Patient Info</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
           <span class="badge badge-country" id="modalCountry"></span>
+          <span class="badge badge-tag" id="modalConcern" style="display:none;"></span>
+          <span class="badge" id="modalFunnel"></span>
           <span class="badge" id="modalVipBadge" style="display:none;"></span>
           <span class="badge" id="modalPausedBadge" style="display:none;"></span>
         </div>
         <div style="display:flex;gap:8px;margin-bottom:10px;">
+          <button class="log-action-btn" id="modalBookedBtn" onclick="toggleModalBooked()">Booked</button>
           <button class="log-action-btn" id="modalVipBtn" onclick="toggleModalVip()">VIP</button>
           <button class="log-action-btn" id="modalPauseBtn" onclick="toggleModalPause()">Pause Bot</button>
         </div>
@@ -867,7 +870,9 @@ async function loadHome(){
         const startFollowers=config.botStartFollowers||0;
         const followerGrowth=ig.followers-startFollowers;
         const followerPct=startFollowers>0?((followerGrowth/startFollowers)*100).toFixed(1):'-';
-        const uniqueUsers=new Set(logs.map(l=>l.username).filter(Boolean)).size;
+        // 미팔로우 사용자 제외한 환자 수
+        const nfCheck={};logs.forEach(l=>{const k=l.username||'';if(!k)return;if(!(k in nfCheck))nfCheck[k]=true;if(!(l.replied||'').includes('[Follow request - not following]'))nfCheck[k]=false;});
+        const uniqueUsers=new Set(logs.map(l=>l.username).filter(k=>k&&!nfCheck[k])).size;
         const countries=new Set(logs.map(l=>cleanC(l.country)).filter(Boolean)).size;
         const consulted=logs.filter(l=>l.tag&&l.tag!=='stuck'&&l.tag!=='paused'&&l.tag!=='direct').length;
         const convRate=logs.length>0?Math.round(consulted/logs.length*100):0;
@@ -1113,7 +1118,7 @@ function addCommentRule(){config.commentRules=config.commentRules||[];config.com
 function rmCR(i){config.commentRules.splice(i,1);renderCommentRules();}
 
 // ── Logs ──
-let allLogs=[],filteredLogs=[],lp=0;const LPP=20;
+let allLogs=[],filteredLogs=[],lp=0;const LPP=10;
 async function loadLogs(){
   try{
     await loadPatientData();
@@ -1148,30 +1153,40 @@ function renderTodaySummary(logs){
   const todayLogs=logs.filter(l=>(l.createdAt||'').startsWith(today));
   const unreviewed=logs.filter(l=>!l.reviewed).length;
   // 퍼널 — 계정 기준 (중복 제거)
-  const userMap={};
+  const userMap={},userAllNotFollow={};
   logs.forEach(l=>{
     const key=l.username||l.senderId||'';
     if(!key)return;
     if(!userMap[key]) userMap[key]={follow:false,stuck:false,interest:false,consulted:false};
+    if(!(key in userAllNotFollow))userAllNotFollow[key]=true;
+    if(!(l.replied||'').includes('[Follow request - not following]'))userAllNotFollow[key]=false;
     if((l.replied||'').includes('[Follow request')) userMap[key].follow=true;
     if(l.tag==='stuck') userMap[key].stuck=true;
     if(l.tag&&l.tag!=='stuck'&&l.tag!=='paused'&&l.tag!=='direct') userMap[key].consulted=true;
     if(cleanC(l.country)&&!l.tag) userMap[key].interest=true;
   });
-  const stuckCount=Object.values(userMap).filter(u=>u.stuck&&!u.consulted&&!u.interest).length;
-  const consultedCount=Object.values(userMap).filter(u=>u.consulted).length;
+  // 미팔로우 사용자 퍼널 제외
+  Object.keys(userAllNotFollow).forEach(k=>{if(userAllNotFollow[k])delete userMap[k];});
+  // getUserStage 기반으로 카운트
+  const stageCounts={follow:0,stuck:0,interest:0,consulted:0};
+  Object.keys(userMap).forEach(k=>{
+    const uLogs=logs.filter(l=>(l.username||l.senderId)===k);
+    const country=uLogs.find(l=>cleanC(l.country))?.country||'';
+    const stage=getUserStage(uLogs,country);
+    stageCounts[stage]++;
+  });
+  const stuckCount=stageCounts.stuck;
+  const consultedCount=stageCounts.consulted;
   const countries={},countryRawToday={};todayLogs.forEach(l=>{const c=cleanC(l.country);if(c){countries[c]=(countries[c]||0)+1;if(!countryRawToday[c])countryRawToday[c]=l.country;}});
   const topC=Object.entries(countries).sort((a,b)=>b[1]-a[1])[0];
   const tags={};todayLogs.forEach(l=>{if(l.tag&&l.tag!=='direct'&&l.tag!=='paused'&&l.tag!=='stuck')tags[l.tag]=(tags[l.tag]||0)+1;});
   const topT=Object.entries(tags).sort((a,b)=>b[1]-a[1])[0];
-  // 최종 상태 결정 (가장 진행된 단계로)
-  let followOnly=0,interestOnly=0;
-  Object.values(userMap).forEach(u=>{
-    if(u.consulted) return;
-    if(u.interest){interestOnly++;return;}
-    if(u.stuck) return;
-    followOnly++; // 팔로우 포함 + 어디에도 안 잡히는 사람
-  });
+  const followOnly=stageCounts.follow;
+  const interestOnly=stageCounts.interest;
+  // Not Following 카운트
+  const nfCount=Object.values(userAllNotFollow).filter(Boolean).length;
+  // Booked 카운트 (수동 마킹)
+  const bookedCount=Object.values(patientData).filter(p=>p.booked).length;
   el.innerHTML=\`
     <div class="summary-card"><div class="stat-label">Today's DMs</div><div class="stat-value">\${todayLogs.length}</div></div>
     <div class="summary-card"><div class="stat-label">Unreviewed</div><div class="stat-value" style="color:\${unreviewed>0?'var(--amber)':'var(--green)'}">\${unreviewed}</div></div>
@@ -1180,27 +1195,46 @@ function renderTodaySummary(logs){
 \`; el.innerHTML+=\`
     <div class="summary-card" style="grid-column:span 2;"><div class="stat-label">Patient Funnel</div>
       <div style="display:flex;gap:4px;margin-top:8px;flex-wrap:nowrap;">
-        <div class="funnel-item" onclick="filterByFunnel('follow')" style="flex:1;text-align:center;padding:6px 2px;background:var(--bg);border-radius:8px;cursor:pointer;position:relative;min-width:0;">
+        <div onclick="filterByFunnel('notfollow')" style="flex:1;text-align:center;padding:6px 2px;background:var(--bg);border-radius:8px;cursor:pointer;min-width:0;">
+          <div style="font-size:16px;font-weight:800;color:var(--text-tertiary);">\${nfCount}</div>
+          <div style="font-size:8px;color:var(--text-tertiary);margin-top:2px;">No follow</div>
+        </div>
+        <div style="flex:0;display:flex;align-items:center;color:var(--text-tertiary);font-size:9px;">→</div>
+        <div onclick="filterByFunnel('follow')" style="flex:1;text-align:center;padding:6px 2px;background:var(--bg);border-radius:8px;cursor:pointer;min-width:0;">
           <div style="font-size:16px;font-weight:800;color:var(--red);">\${followOnly}</div>
-          <div style="font-size:9px;color:var(--text-tertiary);margin-top:2px;">Follow</div>
+          <div style="font-size:8px;color:var(--text-tertiary);margin-top:2px;">Follow</div>
         </div>
         <div style="flex:0;display:flex;align-items:center;color:var(--text-tertiary);font-size:9px;">→</div>
-        <div class="funnel-item" onclick="filterByFunnel('stuck')" style="flex:1;text-align:center;padding:6px 2px;background:var(--bg);border-radius:8px;cursor:pointer;position:relative;min-width:0;">
+        <div onclick="filterByFunnel('stuck')" style="flex:1;text-align:center;padding:6px 2px;background:var(--bg);border-radius:8px;cursor:pointer;min-width:0;">
           <div style="font-size:16px;font-weight:800;color:var(--amber);">\${stuckCount}</div>
-          <div style="font-size:9px;color:var(--text-tertiary);margin-top:2px;">Stuck</div>
-        </div>
-        <div style="flex:0;display:flex;align-items:center;color:var(--text-tertiary);font-size:9px;">→</div>
-        <div class="funnel-item" onclick="filterByFunnel('interest')" style="flex:1;text-align:center;padding:6px 2px;background:var(--bg);border-radius:8px;cursor:pointer;position:relative;min-width:0;">
-          <div style="font-size:16px;font-weight:800;color:var(--cyan);">\${interestOnly}</div>
-          <div style="font-size:9px;color:var(--text-tertiary);margin-top:2px;">Interest</div>
-        </div>
-        <div style="flex:0;display:flex;align-items:center;color:var(--text-tertiary);font-size:9px;">→</div>
-        <div class="funnel-item" onclick="filterByFunnel('consulted')" style="flex:1;text-align:center;padding:6px 2px;background:var(--bg);border-radius:8px;cursor:pointer;position:relative;min-width:0;">
-          <div style="font-size:16px;font-weight:800;color:var(--green);">\${consultedCount}</div>
-          <div style="font-size:9px;color:var(--text-tertiary);margin-top:2px;">Consulted</div>
+          <div style="font-size:8px;color:var(--text-tertiary);margin-top:2px;">Stuck</div>
         </div>
       </div>
-    </div>\`;
+      <div style="display:flex;gap:4px;margin:3px 0;flex-wrap:nowrap;">
+        <div style="flex:1;min-width:0;"></div>
+        <div style="flex:0;display:flex;align-items:center;color:transparent;font-size:9px;">→</div>
+        <div style="flex:1;min-width:0;"></div>
+        <div style="flex:0;display:flex;align-items:center;color:transparent;font-size:9px;">→</div>
+        <div style="flex:1;min-width:0;text-align:center;color:var(--text-tertiary);font-size:9px;">↓</div>
+      </div>
+      <div style="display:flex;gap:4px;flex-wrap:nowrap;">
+        <div onclick="filterByFunnel('booked')" style="flex:1;text-align:center;padding:6px 2px;background:var(--bg);border-radius:8px;cursor:pointer;min-width:0;">
+          <div style="font-size:16px;font-weight:800;color:#E879F9;">\${bookedCount}</div>
+          <div style="font-size:8px;color:var(--text-tertiary);margin-top:2px;">Booked</div>
+        </div>
+        <div style="flex:0;display:flex;align-items:center;color:var(--text-tertiary);font-size:9px;">←</div>
+        <div onclick="filterByFunnel('consulted')" style="flex:1;text-align:center;padding:6px 2px;background:var(--bg);border-radius:8px;cursor:pointer;min-width:0;">
+          <div style="font-size:16px;font-weight:800;color:var(--green);">\${consultedCount}</div>
+          <div style="font-size:8px;color:var(--text-tertiary);margin-top:2px;">Consulted</div>
+        </div>
+        <div style="flex:0;display:flex;align-items:center;color:var(--text-tertiary);font-size:9px;">←</div>
+        <div onclick="filterByFunnel('interest')" style="flex:1;text-align:center;padding:6px 2px;background:var(--bg);border-radius:8px;cursor:pointer;min-width:0;">
+          <div style="font-size:16px;font-weight:800;color:var(--cyan);">\${interestOnly}</div>
+          <div style="font-size:8px;color:var(--text-tertiary);margin-top:2px;">Interest</div>
+        </div>
+      </div>
+    </div>
+  \`;
 }
 
 let funnelFilter='';
@@ -1269,25 +1303,37 @@ function applyFilters(){
   if(showUnreviewedOnly) logs=logs.filter(l=>!l.reviewed);
   // 퍼널 필터 — 사용자 기준으로 최종 단계 계산
   if(funnelFilter){
-    const um={};
+    const um={},umNotFollow={};
     allLogs.forEach(l=>{
       const key=l.username||l.senderId||'';if(!key)return;
       if(!um[key])um[key]={follow:false,stuck:false,interest:false,consulted:false};
+      if(!(key in umNotFollow))umNotFollow[key]=true;
+      if(!(l.replied||'').includes('[Follow request - not following]'))umNotFollow[key]=false;
       if((l.replied||'').includes('[Follow request'))um[key].follow=true;
       if(l.tag==='stuck')um[key].stuck=true;
       if(l.tag&&l.tag!=='stuck'&&l.tag!=='paused'&&l.tag!=='direct')um[key].consulted=true;
       if(cleanC(l.country)&&!l.tag)um[key].interest=true;
     });
-    const fUsers=new Set();
-    Object.entries(um).forEach(([k,u])=>{
-      let stage='';
-      if(u.consulted)stage='consulted';
-      else if(u.interest)stage='interest';
-      else if(u.stuck)stage='stuck';
-      else stage='follow';
-      if(stage===funnelFilter)fUsers.add(k);
-    });
-    logs=logs.filter(l=>fUsers.has(l.username||l.senderId||''));
+    if(funnelFilter==='notfollow'){
+      const nfUsers=new Set(Object.entries(umNotFollow).filter(([k,v])=>v).map(([k])=>k));
+      logs=logs.filter(l=>nfUsers.has(l.username||l.senderId||''));
+    }else if(funnelFilter==='booked'){
+      const bUsers=new Set(Object.entries(patientData).filter(([k,v])=>v.booked).map(([k])=>k));
+      logs=logs.filter(l=>bUsers.has(l.username||l.senderId||''));
+    }else{
+      // 미팔로우 사용자 제외
+      Object.keys(umNotFollow).forEach(k=>{if(umNotFollow[k])delete um[k];});
+      const fUsers=new Set();
+      Object.entries(um).forEach(([k,u])=>{
+        let stage='';
+        if(u.consulted)stage='consulted';
+        else if(u.interest)stage='interest';
+        else if(u.stuck)stage='stuck';
+        else stage='follow';
+        if(stage===funnelFilter)fUsers.add(k);
+      });
+      logs=logs.filter(l=>fUsers.has(l.username||l.senderId||''));
+    }
   }
   // 계정당 최신 1건만 (username 기준 중복 제거)
   const seen=new Set();
@@ -1306,11 +1352,20 @@ function renderLogs(){
   try{
   if(!filteredLogs||!filteredLogs.length){el.innerHTML='<p class="empty">No logs found.<br><span style="font-size:12px;">Try adjusting your filters or search.</span></p>';return;}
   const s=lp*LPP,pg=filteredLogs.slice(s,s+LPP),tp=Math.ceil(filteredLogs.length/LPP);
-  // 사용자별 가장 구체적인 concern 태그 계산
+  // 미팔로우 사용자 감지
+  const notFollowUsers=new Set();
+  const userFollowCheck={};
+  allLogs.forEach(l=>{
+    const key=l.username||l.senderId||'';if(!key)return;
+    if(!(key in userFollowCheck))userFollowCheck[key]=true;
+    if(!(l.replied||'').includes('[Follow request - not following]'))userFollowCheck[key]=false;
+  });
+  Object.entries(userFollowCheck).forEach(([k,v])=>{if(v)notFollowUsers.add(k);});
+  // 사용자별 가장 구체적인 concern 태그 계산 (미팔로우 제외)
   const userBestTag={};
   allLogs.forEach(l=>{
     const key=l.username||l.senderId||'';
-    if(!key)return;
+    if(!key||notFollowUsers.has(key))return;
     const t=l.tag;
     if(t&&t!=='stuck'&&t!=='paused'&&t!=='direct'&&t!=='consultation'){
       if(!userBestTag[key])userBestTag[key]=t;
@@ -1337,10 +1392,9 @@ function renderLogs(){
       <div style="display:flex;gap:4px;flex-wrap:wrap;margin:-4px 0 6px;">
         \${!noCountry?'<span class="badge badge-country">'+esc(shortC(l.country))+'</span>':''}
         \${userBestTag[l.username||l.senderId]?'<span class="badge badge-tag">'+esc(userBestTag[l.username||l.senderId])+'</span>':''}
-        \${getFunnelBadge(l,userBestTag)}
+        \${getFunnelBadge(l,userBestTag,notFollowUsers)}
         \${isVip?'<span class="badge badge-vip">VIP</span>':''}
         \${isPaused?'<span class="badge badge-paused">Bot Paused</span>':''}
-        \${isDirect?'<span class="badge badge-direct">Direct</span>':''}
       </div>
       <div class="log-bubble log-bubble-in"><div class="log-bubble-label">Received</div><div>\${esc(l.received)}</div></div>
       <div class="log-bubble log-bubble-out"><div class="log-bubble-label">Replied</div><div class="log-bubble-text\${longReply?'':' expanded'}" id="\${id}">\${esc(l.replied)}</div>\${longReply?'<button class="log-expand" onclick="toggleLogExpand(\\''+id+'\\',this)">Show more</button>':''}</div>
@@ -1353,18 +1407,29 @@ function renderLogs(){
   }).join('')+(tp>1?\`<div class="page-nav"><button class="page-btn" onclick="pl()" \${lp===0?'disabled':''}>Prev</button><span style="color:var(--text-tertiary);font-size:12px;font-weight:600">\${lp+1}/\${tp}</span><button class="page-btn" onclick="nl()" \${lp>=tp-1?'disabled':''}>Next</button></div>\`:'');
   }catch(e){console.error('renderLogs error:',e);el.innerHTML='<p class="empty">Error rendering logs.</p>';}
 }
-function getFunnelBadge(l,ubt){
+// 공용 퍼널 단계 계산 — 모든 곳에서 이 함수 사용
+function getUserStage(userLogs,country){
+  const hasConsulted=userLogs.some(l=>l.tag&&l.tag!=='stuck'&&l.tag!=='paused'&&l.tag!=='direct'&&l.tag!=='consultation');
+  if(hasConsulted)return'consulted';
+  const hasSkinTag=userLogs.some(l=>l.tag&&l.tag!=='stuck'&&l.tag!=='paused'&&l.tag!=='direct');
+  if(hasSkinTag)return'consulted';
+  const hasStuck=userLogs.some(l=>l.tag==='stuck');
+  if(hasStuck)return'stuck';
+  const hasCountry=!!country;
+  if(hasCountry)return'interest';
+  return'follow';
+}
+function getFunnelBadge(l,ubt,nfUsers){
   const key=l.username||l.senderId||'';
-  const bestTag=ubt&&ubt[key];
-  const isFollow=(l.replied||'').includes('[Follow request');
-  const isStuck=l.tag==='stuck';
-  const isConsulted=(l.tag&&l.tag!=='stuck'&&l.tag!=='paused'&&l.tag!=='direct'&&!isFollow)||(!isFollow&&!isStuck&&bestTag);
-  const isInterest=cleanC(l.country)&&!l.tag&&!bestTag;
-  if(isFollow) return '<span class="badge" style="background:var(--red-soft);color:var(--red);">Follow only</span>';
-  if(isStuck) return '<span class="badge" style="background:rgba(240,178,74,0.12);color:var(--amber);">Stuck</span>';
-  if(isConsulted) return '<span class="badge" style="background:var(--green-soft);color:var(--green);">Consulted</span>';
-  if(isInterest) return '<span class="badge" style="background:rgba(74,200,232,0.12);color:var(--cyan);">Interest only</span>';
-  return '<span class="badge" style="background:var(--red-soft);color:var(--red);">Follow only</span>';
+  // 미팔로우 사용자
+  if(nfUsers&&nfUsers.has(key))return'<span class="badge" style="background:rgba(100,100,100,0.2);color:var(--text-tertiary);">Not following</span>';
+  // 해당 사용자의 전체 로그 기반으로 판단
+  const userLogs=allLogs.filter(x=>(x.username||x.senderId)===(l.username||l.senderId));
+  const country=userLogs.find(x=>cleanC(x.country))?.country||'';
+  const stage=getUserStage(userLogs,country);
+  const styles={consulted:'background:var(--green-soft);color:var(--green);',interest:'background:rgba(74,200,232,0.12);color:var(--cyan);',stuck:'background:rgba(240,178,74,0.12);color:var(--amber);',follow:'background:var(--red-soft);color:var(--red);'};
+  const labels={consulted:'Consulted',interest:'Interest only',stuck:'Stuck',follow:'Follow only'};
+  return '<span class="badge" style="'+styles[stage]+'">'+(labels[stage])+'</span>';
 }
 function toggleLogExpand(id,btn){const el=document.getElementById(id);if(!el)return;el.classList.toggle('expanded');btn.textContent=el.classList.contains('expanded')?'Show less':'Show more';}
 function pl(){if(lp>0){lp--;renderLogs();}}
@@ -1397,8 +1462,28 @@ function openPatient(username,senderId){
   const userLogs=allLogs.filter(l=>l.username===username);
   const country=userLogs.find(l=>cleanC(l.country))?.country||'';
   document.getElementById('modalCountry').textContent=country?shortC(country):'No country';
-  // VIP/Pause state
+  // 미팔로우 체크
+  const isNotFollow=userLogs.length>0&&userLogs.every(l=>(l.replied||'').includes('[Follow request - not following]'));
+  // Concern tag + Funnel (getUserStage 공용 함수 사용)
+  const stage=getUserStage(userLogs,country);
+  const skinTags=isNotFollow?[]:userLogs.map(l=>l.tag).filter(t=>t&&t!=='stuck'&&t!=='paused'&&t!=='direct'&&t!=='consultation');
+  const bestTag=skinTags[0]||'';
+  const cEl=document.getElementById('modalConcern');
+  if(bestTag){cEl.textContent=bestTag;cEl.style.display='inline';}else{cEl.style.display='none';}
+  const fEl=document.getElementById('modalFunnel');
+  if(isNotFollow){
+    fEl.textContent='Not following';fEl.style.cssText='display:inline;background:rgba(100,100,100,0.2);color:var(--text-tertiary);';
+  }else{
+    const stageStyles={consulted:'background:var(--green-soft);color:var(--green);',interest:'background:rgba(74,200,232,0.12);color:var(--cyan);',stuck:'background:rgba(240,178,74,0.12);color:var(--amber);',follow:'background:var(--red-soft);color:var(--red);'};
+    const stageLabels={consulted:'Consulted',interest:'Interest only',stuck:'Stuck',follow:'Follow only'};
+    fEl.textContent=stageLabels[stage]||'Follow only';
+    fEl.style.cssText='display:inline;'+(stageStyles[stage]||stageStyles.follow);
+  }
+  // Booked/VIP/Pause state
   const pd=patientData[username]||{};
+  document.getElementById('modalBookedBtn').className='log-action-btn'+(pd.booked?' active':'');
+  document.getElementById('modalBookedBtn').textContent=pd.booked?'Booked ✓':'Booked';
+  document.getElementById('modalBookedBtn').style.cssText=pd.booked?'background:#E879F9;color:#fff;border-color:#E879F9;':'';
   document.getElementById('modalVipBtn').className='log-action-btn'+(pd.vip?' active':'');
   document.getElementById('modalVipBtn').textContent=pd.vip?'VIP (ON)':'VIP';
   document.getElementById('modalPauseBtn').className='log-action-btn'+(pd.paused?' active':'');
@@ -1413,11 +1498,19 @@ function openPatient(username,senderId){
   document.getElementById('modalMemo').value=pd.memo||'';
   // History
   const hist=document.getElementById('modalHistory');
-  hist.innerHTML=[...userLogs].reverse().map(l=>\`<div style="margin-bottom:10px;">
-    <div style="font-size:10px;color:var(--text-tertiary);margin-bottom:4px;">\${timeAgo(l.createdAt)}\${l.tag?' · '+l.tag:''}</div>
-    <div class="log-bubble log-bubble-in" style="margin-bottom:4px;"><div style="font-size:12px;">\${esc(l.received)}</div></div>
-    <div class="log-bubble log-bubble-out"><div style="font-size:12px;">\${esc(l.replied)}</div></div>
-  </div>\`).join('')||'<p class="empty">No conversation history.</p>';
+  hist.innerHTML=[...userLogs].reverse().map(l=>{
+    const isDr=l.tag==='direct'&&!l.received;
+    const tagLabel=l.tag&&l.tag!=='direct'?' · '+l.tag:'';
+    if(isDr) return \`<div style="margin-bottom:10px;">
+      <div style="font-size:10px;color:var(--accent);margin-bottom:4px;">\${timeAgo(l.createdAt)} · Dr. reply</div>
+      <div class="log-bubble log-bubble-out" style="border-left:3px solid var(--accent);"><div style="font-size:12px;">\${esc(l.replied)}</div></div>
+    </div>\`;
+    return \`<div style="margin-bottom:10px;">
+      <div style="font-size:10px;color:var(--text-tertiary);margin-bottom:4px;">\${timeAgo(l.createdAt)}\${tagLabel}</div>
+      \${l.received?'<div class="log-bubble log-bubble-in" style="margin-bottom:4px;"><div style="font-size:12px;">'+esc(l.received)+'</div></div>':''}
+      \${l.replied?'<div class="log-bubble log-bubble-out"><div style="font-size:12px;">'+esc(l.replied)+'</div></div>':''}
+    </div>\`;
+  }).join('')||'<p class="empty">No conversation history.</p>';
   // Reply input
   document.getElementById('modalReplyInput').value='';
   document.getElementById('patientModal').classList.add('show');
@@ -1428,6 +1521,13 @@ async function toggleModalVip(){
   patientData[currentModalUser].vip=!patientData[currentModalUser].vip;
   await fetch('/api/patients',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(patientData)});
   openPatient(currentModalUser,currentModalSenderId);renderLogs();
+}
+async function toggleModalBooked(){
+  if(!patientData[currentModalUser])patientData[currentModalUser]={};
+  patientData[currentModalUser].booked=!patientData[currentModalUser].booked;
+  await fetch('/api/patients',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(patientData)});
+  openPatient(currentModalUser,currentModalSenderId);renderTodaySummary(allLogs);renderLogs();
+  toast(patientData[currentModalUser].booked?'@'+currentModalUser+' marked as Booked':'@'+currentModalUser+' booking removed');
 }
 async function toggleModalPause(){
   if(!patientData[currentModalUser])patientData[currentModalUser]={};
@@ -1444,7 +1544,7 @@ async function saveModalMemo(){
 async function sendModalReply(){
   const input=document.getElementById('modalReplyInput');if(!input||!input.value.trim()||!currentModalSenderId)return;
   const msg=input.value.trim();input.value='';
-  const res=await fetch('/api/reply',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({senderId:currentModalSenderId,message:msg})});
+  const res=await fetch('/api/reply',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({senderId:currentModalSenderId,username:currentModalUser,message:msg})});
   if(res.ok){toast('Reply sent to @'+currentModalUser);await loadLogs();openPatient(currentModalUser,currentModalSenderId);}else{toast('Failed to send');}
 }
 function exportCSV(){

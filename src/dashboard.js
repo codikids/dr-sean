@@ -71,6 +71,14 @@ export async function handleDashboardAPI(request, env, path) {
       return json(usage, 200, cors);
     }
 
+    // PUT /api/logs/country — 로그 국가 수정
+    if (path === '/api/logs/country' && request.method === 'POST') {
+      const { index, country } = await request.json();
+      const logs = await getRecentLogs(env);
+      if (logs[index]) { logs[index].country = country; await updateLogs(env, logs); }
+      return json({ ok: true }, 200, cors);
+    }
+
     // GET /api/logs — DM 로그 조회
     if (path === '/api/logs' && request.method === 'GET') {
       const logs = await getRecentLogs(env);
@@ -106,6 +114,22 @@ export async function handleDashboardAPI(request, env, path) {
       return json({ ok: true }, 200, cors);
     }
 
+    // DELETE /api/logs — 로그 삭제
+    if (path === '/api/logs/delete' && request.method === 'POST') {
+      const { index } = await request.json();
+      const logs = await getRecentLogs(env);
+      if (index >= 0 && index < logs.length) { logs.splice(index, 1); await updateLogs(env, logs); }
+      return json({ ok: true }, 200, cors);
+    }
+
+    // POST /api/logs/edit — 로그 필드 수정
+    if (path === '/api/logs/edit' && request.method === 'POST') {
+      const { index, field, value } = await request.json();
+      const logs = await getRecentLogs(env);
+      if (logs[index] && ['tag','country','replied','received'].includes(field)) { logs[index][field] = value; await updateLogs(env, logs); }
+      return json({ ok: true }, 200, cors);
+    }
+
     // POST /api/logs/tag — 로그 태그 수정
     if (path === '/api/logs/tag' && request.method === 'POST') {
       const { index, tag } = await request.json();
@@ -116,7 +140,7 @@ export async function handleDashboardAPI(request, env, path) {
 
     // POST /api/reply — 직접 답장 전송
     if (path === '/api/reply' && request.method === 'POST') {
-      const { senderId, message } = await request.json();
+      const { senderId, message, username } = await request.json();
       const url = `https://graph.instagram.com/v21.0/me/messages`;
       const res = await fetch(url, {
         method: 'POST',
@@ -124,9 +148,10 @@ export async function handleDashboardAPI(request, env, path) {
         body: JSON.stringify({ recipient: { id: senderId }, message: { text: message } }),
       });
       if (!res.ok) return json({ error: await res.text() }, 500, cors);
-      // 로그에 직접 답장 기록
+      // 같은 사용자의 새 로그로 추가 (대화 흐름 유지)
       const logs = await getRecentLogs(env);
-      logs.unshift({ senderId, username: '', received: '[Direct reply from dashboard]', replied: message, timestamp: Date.now(), createdAt: new Date().toISOString(), tag: 'direct', reviewed: true });
+      const country = logs.find(l => l.username === username || l.senderId === senderId)?.country || '';
+      logs.unshift({ senderId, username: username || '', received: '', replied: message, timestamp: Date.now(), createdAt: new Date().toISOString(), tag: 'direct', country, reviewed: true });
       if (logs.length > 400) logs.splice(400);
       await updateLogs(env, logs);
       return json({ ok: true }, 200, cors);
