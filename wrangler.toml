@@ -1,0 +1,17 @@
+name = "dr-sean"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+
+# KV 바인딩 — wrangler kv namespace create 후 id 채워넣기
+[[kv_namespaces]]
+binding = "KV"
+id = "a43e06036bc54509bd9ae6d9bd37b14c"
+
+# 환경변수 — wrangler secret put 으로 등록
+# META_VERIFY_TOKEN   : webhook 검증 토큰 (우리가 정하는 문자열)
+# META_APP_SECRET     : Meta 앱 시크릿
+# META_PAGE_TOKEN     : 페이지 액세스 토큰
+# CLAUDE_API_KEY      : Anthropic API 키
+
+[vars]
+BOT_ENABLED = "true"
