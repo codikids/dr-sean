@@ -90,7 +90,8 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
   .nav-item.active .nav-label { color:var(--accent); }
 
   /* ── Content ── */
-  .content { max-width:600px; margin:0 auto; padding:16px 16px calc(var(--nav-h) + 16px); }
+  .content { max-width:600px; margin:0 auto; padding:16px 16px 300px; }
+  .section { padding-bottom:80px; }
 
   /* ── Cards ── */
   .card {
@@ -288,7 +289,7 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
   .setting-desc { font-size:10px; color:var(--text-tertiary); margin-top:2px; }
   .setting-arrow { color:var(--text-tertiary); font-size:12px; transition:transform 0.2s; }
   .setting-section.open .setting-arrow { transform:rotate(180deg); }
-  .setting-body { padding:0 14px 14px; display:none; }
+  .setting-body { padding:8px 14px 14px; display:none; border-top:1px solid var(--border); margin-top:4px; }
   .btn-save-card { width:100%;margin-top:12px;padding:10px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;font-family:'Inter',sans-serif;cursor:pointer;transition:all 0.15s; }
   .btn-save-card:hover { opacity:0.9; }
   .btn-save-card:active { transform:scale(0.98); }
@@ -320,13 +321,9 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
   .empty::before { content:''; display:block; width:48px; height:48px; margin:0 auto 14px; border-radius:50%; background:var(--surface-2); border:2px dashed var(--border); }
 
   /* ── Responsive ── */
+  .desktop-tabs { display:none !important; }
   @media(min-width:768px) {
-    .bottom-nav { display:none; }
     .content { padding-bottom:24px; }
-    .desktop-tabs { display:flex !important; }
-  }
-  @media(max-width:767px) {
-    .desktop-tabs { display:none !important; }
   }
   @media(max-width:480px) {
     .log-bubble-out { margin-left:10px; }
@@ -349,6 +346,9 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
       <div class="dot"></div>
       <span id="botLabel">Active</span>
     </div>
+    <button class="header-btn" onclick="location.reload()" title="Refresh">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+    </button>
     <button class="header-btn" onclick="toggleTheme()" id="themeBtn" title="Toggle theme">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
     </button>
@@ -382,6 +382,12 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
 
   <!-- HOME -->
   <div class="section active" id="sec-home">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+      <div style="width:32px;height:32px;border-radius:10px;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      </div>
+      <div><div style="font-size:15px;font-weight:700;">Dashboard</div><div style="font-size:10px;color:var(--text-tertiary);">Instagram performance overview</div></div>
+    </div>
     <div id="homeError"></div>
 
     <!-- Profile + Bot Status -->
@@ -426,6 +432,12 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
 
   <!-- DM ANALYTICS -->
   <div class="section" id="sec-analytics">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+      <div style="width:32px;height:32px;border-radius:10px;background:var(--green-soft);display:flex;align-items:center;justify-content:center;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      </div>
+      <div><div style="font-size:15px;font-weight:700;">Analytics</div><div style="font-size:10px;color:var(--text-tertiary);">DM activity & patient breakdown</div></div>
+    </div>
     <div id="analyticsError"></div>
     <div class="stat-grid stat-grid-3">
       <div class="stat-card"><div class="stat-label">Total DMs</div><div class="stat-value" id="statDMs">-</div></div>
@@ -439,29 +451,32 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
     </div>
 
     <div class="chart-card">
-      <div class="card-header">DM by Country</div>
-      <div class="chart-wrap"><canvas id="chartCountry"></canvas></div>
-    </div>
-
-    <div class="chart-card">
-      <div class="card-header">Skin Concerns</div>
-      <div class="chart-wrap"><canvas id="chartTags"></canvas></div>
-    </div>
-
-    <div class="chart-card">
-      <div class="card-header">Concerns by Country</div>
-      <div class="chart-wrap chart-wrap-lg"><canvas id="chartCountryConcerns"></canvas></div>
+      <div class="card-header">DM Breakdown</div>
+      <div style="display:flex;gap:6px;margin:8px 0;" id="anaToggle">
+        <button onclick="anaSwitch(0)" style="flex:1;padding:6px;border:none;border-radius:6px;font-size:10px;font-weight:700;font-family:Inter,sans-serif;cursor:pointer;background:var(--accent);color:#fff;">Country</button>
+        <button onclick="anaSwitch(1)" style="flex:1;padding:6px;border:none;border-radius:6px;font-size:10px;font-weight:700;font-family:Inter,sans-serif;cursor:pointer;background:var(--bg);color:var(--text-tertiary);">Concerns</button>
+        <button onclick="anaSwitch(2)" style="flex:1;padding:6px;border:none;border-radius:6px;font-size:10px;font-weight:700;font-family:Inter,sans-serif;cursor:pointer;background:var(--bg);color:var(--text-tertiary);">By Country</button>
+      </div>
+      <div id="anaChartWrap0" class="chart-wrap"><canvas id="chartCountry"></canvas></div>
+      <div id="anaChartWrap1" class="chart-wrap" style="display:none;"><canvas id="chartTags"></canvas></div>
+      <div id="anaChartWrap2" class="chart-wrap chart-wrap-lg" style="display:none;"><canvas id="chartCountryConcerns"></canvas></div>
     </div>
   </div>
 
   <!-- SETTINGS -->
   <div class="section" id="sec-settings">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+      <div style="width:32px;height:32px;border-radius:10px;background:var(--amber-soft);display:flex;align-items:center;justify-content:center;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      </div>
+      <div><div style="font-size:15px;font-weight:700;">Settings</div><div style="font-size:10px;color:var(--text-tertiary);">Configure your bot & clinic</div></div>
+    </div>
 
-    <!-- 1. Clinic Info -->
+    <!-- 1. Clinic Info + Treatments -->
     <div class="setting-section">
       <div class="setting-header" onclick="toggleSetting(this)">
         <div class="setting-icon" style="background:var(--accent-soft);color:var(--accent);"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
-        <div class="setting-info"><div class="setting-title">Clinic Info</div><div class="setting-desc">Name, address, hours, booking</div></div>
+        <div class="setting-info"><div class="setting-title">Clinic Info</div><div class="setting-desc">Name, address, hours, treatments</div></div>
         <span class="setting-arrow">&#9660;</span>
       </div>
       <div class="setting-body">
@@ -475,18 +490,6 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
         <input class="form-input" id="phone" placeholder="e.g. (310) 555-1234">
         <label class="form-label">Booking</label>
         <input class="form-input" id="booking" placeholder="e.g. DM, phone call, or link">
-        <button class="btn-save-card" onclick="saveConfig()">Save</button>
-      </div>
-    </div>
-
-    <!-- 2. Treatments -->
-    <div class="setting-section">
-      <div class="setting-header" onclick="toggleSetting(this)">
-        <div class="setting-icon" style="background:var(--green-soft);color:var(--green);"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
-        <div class="setting-info"><div class="setting-title">Treatments</div><div class="setting-desc">Services & pricing list</div></div>
-        <span class="setting-arrow">&#9660;</span>
-      </div>
-      <div class="setting-body">
         <label class="form-label">Treatments & Pricing</label>
         <textarea class="form-textarea" id="treatments" rows="5" placeholder="e.g. Botox: from \$200"></textarea>
         <button class="btn-save-card" onclick="saveConfig()">Save</button>
@@ -507,61 +510,40 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
       </div>
     </div>
 
-    <!-- 4. Country Buttons -->
+    <!-- 3. Quick Reply Buttons -->
     <div class="setting-section">
       <div class="setting-header" onclick="toggleSetting(this)">
         <div class="setting-icon" style="background:rgba(61,214,140,0.12);color:var(--green);"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg></div>
-        <div class="setting-info"><div class="setting-title">Country Buttons</div><div class="setting-desc">Quick reply options for country selection</div></div>
+        <div class="setting-info"><div class="setting-title">Quick Reply Buttons</div><div class="setting-desc">Country & skin concern selection options</div></div>
         <span class="setting-arrow">&#9660;</span>
       </div>
       <div class="setting-body">
-        <p style="font-size:12px;color:var(--text-tertiary);margin-bottom:10px;line-height:1.5;">These buttons appear when a new user DMs. Max 13 options. "Others" lets users type their country. Comma separated.</p>
+        <label class="form-label">Country Buttons</label>
+        <p style="font-size:10px;color:var(--text-tertiary);margin-bottom:6px;">Comma separated. "Others" lets users type their country.</p>
         <input class="form-input" id="countryOptions" placeholder="e.g. United States, Singapore, Australia, Canada, Others">
-        <button class="btn-save-card" onclick="saveConfig()">Save</button>
-      </div>
-    </div>
-
-    <!-- 4.5. Concern Buttons -->
-    <div class="setting-section">
-      <div class="setting-header" onclick="toggleSetting(this)">
-        <div class="setting-icon" style="background:rgba(169,132,255,0.12);color:#A984FF;"><svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2" stroke="currentColor" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-        <div class="setting-info"><div class="setting-title">Concern Buttons</div><div class="setting-desc">Quick reply options for skin concern selection</div></div>
-        <span class="setting-arrow">&#9660;</span>
-      </div>
-      <div class="setting-body">
-        <p style="font-size:12px;color:var(--text-tertiary);margin-bottom:10px;line-height:1.5;">After country selection, patients choose their concern. "Others" lets them type freely. Comma separated.</p>
+        <label class="form-label">Concern Buttons</label>
+        <p style="font-size:10px;color:var(--text-tertiary);margin-bottom:6px;">Shown after country selection. "Others" lets them type freely.</p>
         <input class="form-input" id="concernOptions" placeholder="e.g. Botox, Filler, Lifting, Anti-aging, Acne, Skincare, Others">
         <button class="btn-save-card" onclick="saveConfig()">Save</button>
       </div>
     </div>
 
-    <!-- 5. AI Consultation Prompt -->
+    <!-- 4. AI Settings -->
     <div class="setting-section">
       <div class="setting-header" onclick="toggleSetting(this)">
         <div class="setting-icon" style="background:rgba(167,139,250,0.12);color:var(--purple);"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
-        <div class="setting-info"><div class="setting-title">AI Consultation Prompt</div><div class="setting-desc">Controls AI personality, tone & medical rules</div></div>
+        <div class="setting-info"><div class="setting-title">AI Settings</div><div class="setting-desc">Prompt, rules & fallback message</div></div>
         <span class="setting-arrow">&#9660;</span>
       </div>
       <div class="setting-body">
-        <div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
-          <button onclick="resetPrompt()" style="background:var(--surface-2);border:1px solid var(--border);color:var(--text-tertiary);padding:6px 12px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;font-family:Inter,sans-serif;">Reset to Default</button>
+        <label class="form-label">AI Consultation Prompt</label>
+        <div style="display:flex;justify-content:flex-end;margin-bottom:6px;">
+          <button onclick="resetPrompt()" style="background:var(--surface-2);border:1px solid var(--border);color:var(--text-tertiary);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:10px;font-weight:600;font-family:Inter,sans-serif;">Reset to Default</button>
         </div>
         <textarea class="form-textarea" id="aiPrompt" rows="14" style="font-size:13px;line-height:1.6;font-family:'Courier New',monospace;"></textarea>
-        <button class="btn-save-card" onclick="saveConfig()">Save</button>
-      </div>
-    </div>
-
-    <!-- 6. Additional Rules -->
-    <div class="setting-section">
-      <div class="setting-header" onclick="toggleSetting(this)">
-        <div class="setting-icon" style="background:var(--amber-soft);color:var(--amber);"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
-        <div class="setting-info"><div class="setting-title">Additional Rules</div><div class="setting-desc">Extra AI rules & fallback message</div></div>
-        <span class="setting-arrow">&#9660;</span>
-      </div>
-      <div class="setting-body">
-        <label class="form-label">Extra rules (appended to prompt)</label>
+        <label class="form-label">Extra Rules</label>
         <textarea class="form-textarea" id="customRules" rows="3" placeholder="e.g. Never mention competitors"></textarea>
-        <label class="form-label">Fallback message (when AI fails)</label>
+        <label class="form-label">Fallback Message (when AI fails)</label>
         <input class="form-input" id="fallback" placeholder="e.g. Sorry, try again shortly!">
         <button class="btn-save-card" onclick="saveConfig()">Save</button>
       </div>
@@ -664,6 +646,12 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
 
   <!-- LOGS -->
   <div class="section" id="sec-logs">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+      <div style="width:32px;height:32px;border-radius:10px;background:rgba(74,200,232,0.12);display:flex;align-items:center;justify-content:center;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      </div>
+      <div><div style="font-size:15px;font-weight:700;">Patient Logs</div><div style="font-size:10px;color:var(--text-tertiary);">DM conversations & patient funnel</div></div>
+    </div>
     <!-- Today's Summary -->
     <div class="summary-grid" id="todaySummary"></div>
 
@@ -750,7 +738,7 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
     <span class="nav-label">Home</span>
   </button>
   <button class="nav-item" onclick="switchTab('analytics',this)">
-    <span class="nav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
+    <span class="nav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
     <span class="nav-label">Analytics</span>
   </button>
   <button class="nav-item" onclick="switchTab('logs',this)">
@@ -844,9 +832,9 @@ function switchTab(name, el) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   if(el) el.classList.add('active');
   // sync both navs
-  document.querySelectorAll('.bottom-nav .nav-item, .desktop-tabs .nav-item').forEach(n => {
-    n.classList.toggle('active', n.textContent.toLowerCase().includes(name === 'analytics' ? 'dm' : name === 'home' ? 'home' : name));
-  });
+  const tabs=['home','analytics','logs','insights','settings'];
+  document.querySelectorAll('.bottom-nav .nav-item').forEach((n,i)=>{n.classList.toggle('active',tabs[i]===name);});
+  localStorage.setItem('drsean_tab',name);
   if(name==='home') loadHome();
   if(name==='analytics') loadAnalytics();
   if(name==='logs') loadLogs();
@@ -942,7 +930,7 @@ async function loadHome(){
           </div>
         </div>\`;
         // Booking Intent — Bot Performance 카드 안, grid 밖 (전체 너비)
-        bp.querySelector('.card').insertAdjacentHTML('beforeend',\`<div style="margin-top:8px;padding:10px 12px;background:var(--bg);border-radius:8px;border-left:3px solid #5B8DEF;display:flex;align-items:center;justify-content:space-between;">
+        bp.querySelector('.card').insertAdjacentHTML('beforeend',\`<div style="margin-top:8px;padding:10px 12px;background:var(--bg);border-radius:8px;display:flex;align-items:center;justify-content:space-between;">
           <div><span style="font-size:11px;color:var(--text-secondary);font-weight:600;">Booking Intent</span><div style="font-size:9px;color:var(--text-tertiary);margin-top:2px;">Patients who selected "Booking Inquiry"</div></div>
           <span style="font-size:22px;font-weight:800;color:#5B8DEF;">\${new Set(logs.filter(l=>l.tag==='booking').map(l=>l.username||l.senderId)).size}</span>
         </div>\`);
@@ -954,11 +942,11 @@ async function loadHome(){
     const p=[...ig.posts].reverse();
     const labels=p.map(x=>x.date?new Date(x.date).toLocaleDateString('en',{month:'short',day:'numeric'}):'');
     const ds=[
-      {label:'Views',data:p.map(x=>x.views||0),backgroundColor:'#4AC8E8',borderRadius:5,barPercentage:0.6,hidden:false},
-      {label:'Likes',data:p.map(x=>x.likes),backgroundColor:'#5B8DEF',borderRadius:5,barPercentage:0.6,hidden:true},
-      {label:'Comments',data:p.map(x=>x.comments),backgroundColor:'#3DD68C',borderRadius:5,barPercentage:0.6,hidden:true},
+      {label:'Views',data:p.map(x=>x.views||0),backgroundColor:'rgba(74,200,232,0.7)',hoverBackgroundColor:'#4AC8E8',borderRadius:20,barPercentage:0.4,hidden:false,borderSkipped:false},
+      {label:'Likes',data:p.map(x=>x.likes),backgroundColor:'rgba(91,141,239,0.7)',hoverBackgroundColor:'#5B8DEF',borderRadius:20,barPercentage:0.4,hidden:true,borderSkipped:false},
+      {label:'Comments',data:p.map(x=>x.comments),backgroundColor:'rgba(61,214,140,0.7)',hoverBackgroundColor:'#3DD68C',borderRadius:20,barPercentage:0.4,hidden:true,borderSkipped:false},
     ];
-    const engOpts=cOpts();engOpts.plugins.legend={display:false};engOpts.animation={duration:300,easing:'easeOutQuart'};engOpts.transitions={active:{animation:{duration:300}}};
+    const engOpts=cOpts();engOpts.plugins.legend={display:false};engOpts.animation={duration:300,easing:'easeOutQuart'};engOpts.transitions={active:{animation:{duration:300}}};engOpts.scales.x.ticks.maxRotation=0;engOpts.scales.x.ticks.autoSkip=true;engOpts.scales.x.ticks.maxTicksLimit=8;
     window._engChart=new Chart(document.getElementById('chartEngagement'),{
       type:'bar',
       data:{labels,datasets:ds},
@@ -1011,22 +999,30 @@ async function loadAnalytics(){
 
   // Activity
   const days=[];for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);days.push(d.toISOString().split('T')[0]);}
-  new Chart(document.getElementById('chartActivity'),{type:'line',data:{labels:days.map(d=>d.slice(5)),datasets:[{label:'DMs',data:days.map(d=>logs.filter(l=>(l.createdAt||'').startsWith(d)).length),borderColor:'#5B8DEF',backgroundColor:'rgba(91,141,239,0.08)',fill:true,tension:0.4,pointRadius:4,pointBackgroundColor:'#5B8DEF',borderWidth:2}]},options:cOpts()});
+  new Chart(document.getElementById('chartActivity'),{type:'line',data:{labels:days.map(d=>d.slice(5)),datasets:[{label:'DMs',data:days.map(d=>logs.filter(l=>(l.createdAt||'').startsWith(d)).length),borderColor:'#5B8DEF',backgroundColor:'rgba(91,141,239,0.06)',fill:true,tension:0.4,pointRadius:5,pointBackgroundColor:'#5B8DEF',pointBorderColor:'#fff',pointBorderWidth:2,pointHoverRadius:7,borderWidth:2.5}]},options:cOpts()});
 
-  // Country
-  if(Object.keys(countries).length){const s=Object.entries(countries).sort((a,b)=>b[1]-a[1]).slice(0,8);new Chart(document.getElementById('chartCountry'),{type:'doughnut',data:{labels:s.map(x=>cleanC(x[0])),datasets:[{data:s.map(x=>x[1]),backgroundColor:CC.slice(0,s.length),borderWidth:0}]},options:dOpts});}
+  // Country — 바 차트
+  const anaBarOpts=cOpts();anaBarOpts.plugins.legend={display:false};anaBarOpts.animation={duration:300,easing:'easeOutQuart'};
+  if(Object.keys(countries).length){const s=Object.entries(countries).sort((a,b)=>b[1]-a[1]).slice(0,8);new Chart(document.getElementById('chartCountry'),{type:'bar',data:{labels:s.map(x=>shortC(countryRaw[x[0]]||x[0])),datasets:[{data:s.map(x=>x[1]),backgroundColor:'rgba(91,141,239,0.7)',hoverBackgroundColor:'#5B8DEF',borderRadius:20,barPercentage:0.4,borderSkipped:false}]},options:anaBarOpts});}
 
-  // Tags
-  if(Object.keys(tags).length){const s=Object.entries(tags).sort((a,b)=>b[1]-a[1]).slice(0,8);new Chart(document.getElementById('chartTags'),{type:'doughnut',data:{labels:s.map(x=>x[0]),datasets:[{data:s.map(x=>x[1]),backgroundColor:CC.slice(0,s.length),borderWidth:0}]},options:dOpts});}
+  // Tags — 바 차트
+  if(Object.keys(tags).length){const s=Object.entries(tags).sort((a,b)=>b[1]-a[1]).slice(0,8);new Chart(document.getElementById('chartTags'),{type:'bar',data:{labels:s.map(x=>x[0]),datasets:[{data:s.map(x=>x[1]),backgroundColor:'rgba(61,214,140,0.7)',hoverBackgroundColor:'#3DD68C',borderRadius:20,barPercentage:0.4,borderSkipped:false}]},options:anaBarOpts});}
 
-  // Country Concerns
+  // Country Concerns — 스택 바 차트 (범례 표시)
   if(Object.keys(ct).length){
     const ccl=Object.keys(ct).sort((a,b)=>Object.values(ct[b]).reduce((s,v)=>s+v,0)-Object.values(ct[a]).reduce((s,v)=>s+v,0)).slice(0,8);
     const at=[...new Set(ccl.flatMap(c=>Object.keys(ct[c])))];
-    new Chart(document.getElementById('chartCountryConcerns'),{type:'bar',data:{labels:ccl.map(c=>cleanC(c)),datasets:at.map((t,i)=>({label:t,data:ccl.map(c=>ct[c][t]||0),backgroundColor:CC[i%CC.length],borderRadius:3}))},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:cl,font:{size:10,family:'Inter'},usePointStyle:true,pointStyleWidth:7,padding:8}}},scales:{x:{stacked:true,ticks:{color:cl,font:{size:10}},grid:{display:false},border:{display:false}},y:{stacked:true,ticks:{color:cl,font:{size:10}},grid:{color:cg},border:{display:false},beginAtZero:true}}}});
+    const stackOpts=cOpts();stackOpts.scales.x.stacked=true;stackOpts.scales.y={display:false,stacked:true,beginAtZero:true};stackOpts.plugins.legend={labels:{color:chartColor(),font:{size:9,family:'Inter'},usePointStyle:true,pointStyleWidth:6,padding:6}};
+    new Chart(document.getElementById('chartCountryConcerns'),{type:'bar',data:{labels:ccl.map(c=>shortC(countryRaw[c]||c)),datasets:at.map((t,i)=>({label:t,data:ccl.map(c=>ct[c][t]||0),backgroundColor:CC[i%CC.length]+'B3',hoverBackgroundColor:CC[i%CC.length],borderRadius:4,borderSkipped:false}))},options:stackOpts});
   }
 }
 
+const ANA_COLORS=['var(--accent)','var(--green)','var(--amber)'];
+function anaSwitch(idx){
+  for(let i=0;i<3;i++){const w=document.getElementById('anaChartWrap'+i);if(w)w.style.display=i===idx?'':'none';}
+  const btns=document.querySelectorAll('#anaToggle button');
+  btns.forEach((b,i)=>{b.style.background=i===idx?ANA_COLORS[i]:'var(--bg)';b.style.color=i===idx?'#fff':'var(--text-tertiary)';});
+}
 const ENG_COLORS=['#4AC8E8','#5B8DEF','#3DD68C'];
 function engSwitch(idx){
   if(!window._engChart)return;
@@ -1066,7 +1062,7 @@ function renderHotPost(idx){
 }
 function chartColor(){return getComputedStyle(document.documentElement).getPropertyValue('--chart-label').trim()||'#E0E4F0';}
 function chartGrid(){return getComputedStyle(document.documentElement).getPropertyValue('--chart-grid').trim()||'rgba(140,155,200,0.06)';}
-function cOpts(){const cl=chartColor(),cg=chartGrid();return{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:cl,font:{size:10,family:'Inter'},usePointStyle:true,pointStyleWidth:7,padding:10,generateLabels:function(chart){return chart.data.datasets.map((ds,i)=>({text:ds.label,fontColor:cl,fillStyle:ds.hidden?'rgba(100,100,100,0.3)':ds.backgroundColor,strokeStyle:'transparent',lineWidth:0,pointStyle:'circle',hidden:false,datasetIndex:i}));}}}},scales:{x:{ticks:{color:cl,font:{size:10,family:'Inter'}},grid:{color:cg},border:{display:false}},y:{ticks:{color:cl,font:{size:10,family:'Inter'}},grid:{color:cg},border:{display:false},beginAtZero:true}}};}
+function cOpts(){const cl=chartColor();return{responsive:true,maintainAspectRatio:false,animation:{duration:400,easing:'easeOutQuart'},plugins:{legend:{display:false},tooltip:{backgroundColor:'#1E2338',titleColor:'#fff',bodyColor:'#fff',borderColor:'rgba(255,255,255,0.1)',borderWidth:1,cornerRadius:8,padding:10,displayColors:false,titleFont:{size:11,weight:700,family:'Inter'},bodyFont:{size:12,weight:600,family:'Inter'}}},scales:{x:{ticks:{color:cl,font:{size:9,family:'Inter',weight:500},maxRotation:45,autoSkip:false},grid:{display:false},border:{display:false}},y:{display:false,beginAtZero:true}}};}
 function fmt(n){if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return String(n||0);}
 
 // ── Config ──
@@ -1251,7 +1247,7 @@ async function loadInsights(){
 
     // 시간대 분석 (24시간)
     const hours=Array(24).fill(0);
-    activeLogs.forEach(l=>{if(l.createdAt){const h=new Date(l.createdAt).getUTCHours();hours[h]++;}});
+    activeLogs.forEach(l=>{if(l.createdAt){const h=(new Date(l.createdAt).getUTCHours()+9)%24;hours[h]++;}});
     const maxHour=Math.max(...hours)||1;
     const peakH=hours.indexOf(Math.max(...hours));
     const peakStr=(peakH%12||12)+(peakH<12?'AM':'PM');
@@ -1356,52 +1352,58 @@ async function loadInsights(){
       </div>\`;
     }
 
-    // 3. Top Concerns — 바 차트
-    if(topConcerns.length){
-      html+=\`<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-top:10px;">
-        <div style="font-size:11px;font-weight:700;color:var(--cyan);text-transform:uppercase;margin-bottom:12px;">Top Concerns</div>
-        <div style="display:flex;flex-direction:column;gap:8px;">
-          \${topConcerns.map(([t,c],i)=>'<div style="display:flex;align-items:center;gap:8px;"><div style="width:80px;font-size:11px;font-weight:600;color:var(--text-secondary);text-align:left;flex-shrink:0;">'+esc(t)+'</div><div style="flex:1;height:20px;background:var(--bg);border-radius:4px;overflow:hidden;"><div style="height:100%;width:'+Math.round(c/maxConcern*100)+'%;background:'+CC[i%CC.length]+';border-radius:4px;"></div></div><div style="font-size:11px;font-weight:700;color:var(--text);width:20px;">'+c+'</div></div>').join('')}
-        </div>
-      </div>\`;
-    }
-
-    // 4. Patient Geography — 바 차트 + 국기
-    if(topCountries.length){
-      html+=\`<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-top:10px;">
-        <div style="font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase;margin-bottom:12px;">Patient Geography · \${Object.keys(countries).length} countries</div>
-        <div style="display:flex;flex-direction:column;gap:8px;">
-          \${topCountries.map(([c,n],i)=>{const raw=countryRawMap[c]||c;const emoji=(raw.match(/[\\u{1F1E0}-\\u{1F1FF}]{2}/u)||[''])[0];return '<div style="display:flex;align-items:center;gap:8px;"><div style="width:80px;font-size:11px;font-weight:600;color:var(--text-secondary);text-align:left;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+emoji+' '+esc(c)+'</div><div style="flex:1;height:20px;background:var(--bg);border-radius:4px;overflow:hidden;"><div style="height:100%;width:'+Math.round(n/maxCountry*100)+'%;background:'+CC[(i+2)%CC.length]+';border-radius:4px;"></div></div><div style="font-size:11px;font-weight:700;color:var(--text);width:20px;">'+n+'</div></div>';}).join('')}
-        </div>
-      </div>\`;
-    }
-
-    // 5. Funnel Health — 시각적 바
-    const funnelData=[{l:'Follow',c:stages.follow,cl:'var(--red)'},{l:'Stuck',c:stages.stuck,cl:'var(--amber)'},{l:'Interest',c:stages.interest,cl:'var(--cyan)'},{l:'Consulted',c:stages.consulted,cl:'var(--green)'},{l:'Booked',c:bookedCount,cl:'#E879F9'}];
-    const maxF=Math.max(...funnelData.map(f=>f.c))||1;
-    html+=\`<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-top:10px;">
-      <div style="font-size:11px;font-weight:700;color:var(--amber);text-transform:uppercase;margin-bottom:12px;">Funnel Health · \${convRate}% conversion</div>
-      <div style="display:flex;flex-direction:column;gap:6px;">
-        \${funnelData.map(f=>'<div style="display:flex;align-items:center;gap:8px;"><div style="width:80px;font-size:10px;font-weight:600;color:var(--text-tertiary);text-align:left;flex-shrink:0;">'+f.l+'</div><div style="flex:1;height:16px;background:var(--bg);border-radius:3px;overflow:hidden;"><div style="height:100%;width:'+Math.max(Math.round(f.c/maxF*100),f.c>0?8:0)+'%;background:'+f.cl+';border-radius:3px;transition:width 0.5s;"></div></div><div style="font-size:11px;font-weight:700;color:'+f.cl+';width:20px;">'+f.c+'</div></div>').join('')}
+    // 2.7. Activity Heatmap — 토스 스타일
+    html+=\`<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-top:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;">DM Activity · 24h</div>
+        <div style="font-size:16px;font-weight:800;color:var(--text);">\${peakStr}<span style="font-size:9px;color:var(--text-tertiary);font-weight:600;margin-left:4px;">KST peak</span></div>
       </div>
-      \${stages.stuck>0?'<div style="margin-top:10px;padding:8px 10px;background:rgba(240,178,74,0.08);border-radius:6px;font-size:11px;color:var(--amber);"><b>⚠ Action needed:</b> '+stages.stuck+' patient'+(stages.stuck>1?'s are':' is')+' stuck. <span onclick="switchTab(\\'logs\\',null);filterByFunnel(\\'stuck\\')" style="text-decoration:underline;cursor:pointer;">View stuck patients →</span></div>':''}
-    </div>\`;
-
-    // 6. Activity Heatmap — 24시간
-    html+=\`<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-top:10px;">
-      <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;margin-bottom:12px;">DM Activity · 24h Heatmap</div>
-      <div style="display:flex;gap:2px;align-items:flex-end;height:50px;">
-        \${hours.map((c,h)=>'<div title="'+((h%12||12)+(h<12?'AM':'PM'))+': '+c+' DMs" style="flex:1;background:'+(c>0?'var(--accent)':'var(--bg)')+';opacity:'+(c>0?Math.max(0.3,c/maxHour):0.15)+';height:'+Math.max(Math.round(c/maxHour*100),4)+'%;border-radius:2px;cursor:default;"></div>').join('')}
+      <div style="display:flex;gap:3px;align-items:flex-end;height:60px;">
+        \${hours.map((c,h)=>{const isPeak=h===peakH&&c>0;return'<div title="'+((h%12||12)+(h<12?'AM':'PM'))+': '+c+' DMs" style="flex:1;background:'+(isPeak?'var(--accent)':c>0?'rgba(91,141,239,0.5)':'var(--bg)')+';height:'+Math.max(Math.round(c/maxHour*100),3)+'%;border-radius:20px;cursor:default;transition:all 0.3s;"></div>';}).join('')}
       </div>
-      <div style="display:flex;justify-content:space-between;margin-top:4px;">
+      <div style="display:flex;justify-content:space-between;margin-top:6px;">
         <span style="font-size:8px;color:var(--text-tertiary);">12AM</span>
         <span style="font-size:8px;color:var(--text-tertiary);">6AM</span>
         <span style="font-size:8px;color:var(--text-tertiary);">12PM</span>
         <span style="font-size:8px;color:var(--text-tertiary);">6PM</span>
         <span style="font-size:8px;color:var(--text-tertiary);">11PM</span>
       </div>
-      <div style="margin-top:8px;font-size:11px;color:var(--text-secondary);">Peak hour: <b style="color:var(--text);">\${peakStr} UTC</b> — best time to post for maximum engagement.</div>
     </div>\`;
+
+    // 3. Top Concerns — 토스 스타일
+    if(topConcerns.length){
+      html+=\`<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-top:10px;">
+        <div style="font-size:11px;font-weight:700;color:var(--cyan);text-transform:uppercase;margin-bottom:16px;">Top Concerns</div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          \${topConcerns.map(([t,c],i)=>'<div><div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="font-size:12px;font-weight:600;color:var(--text);">'+esc(t)+'</span><span style="font-size:12px;font-weight:800;color:'+CC[i%CC.length]+';">'+c+'</span></div><div style="height:8px;background:var(--bg);border-radius:20px;overflow:hidden;"><div style="height:100%;width:'+Math.round(c/maxConcern*100)+'%;background:'+CC[i%CC.length]+';border-radius:20px;opacity:0.75;transition:width 0.6s ease;"></div></div></div>').join('')}
+        </div>
+      </div>\`;
+    }
+
+    // 4. Patient Geography — 토스 스타일
+    if(topCountries.length){
+      html+=\`<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-top:10px;">
+        <div style="font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase;margin-bottom:16px;">Patient Geography · \${Object.keys(countries).length} countries</div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          \${topCountries.map(([c,n],i)=>{const raw=countryRawMap[c]||c;const emoji=(raw.match(/[\\u{1F1E0}-\\u{1F1FF}]{2}/u)||[''])[0];return '<div><div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="font-size:12px;font-weight:600;color:var(--text);">'+emoji+' '+esc(c)+'</span><span style="font-size:12px;font-weight:800;color:'+CC[(i+2)%CC.length]+';">'+n+'</span></div><div style="height:8px;background:var(--bg);border-radius:20px;overflow:hidden;"><div style="height:100%;width:'+Math.round(n/maxCountry*100)+'%;background:'+CC[(i+2)%CC.length]+';border-radius:20px;opacity:0.75;transition:width 0.6s ease;"></div></div></div>';}).join('')}
+        </div>
+      </div>\`;
+    }
+
+    // 5. Funnel Health — 토스 스타일
+    const funnelData=[{l:'Follow',c:stages.follow,cl:'var(--red)'},{l:'Stuck',c:stages.stuck,cl:'var(--amber)'},{l:'Interest',c:stages.interest,cl:'var(--cyan)'},{l:'Consulted',c:stages.consulted,cl:'var(--green)'},{l:'Booked',c:bookedCount,cl:'#E879F9'}];
+    const maxF=Math.max(...funnelData.map(f=>f.c))||1;
+    html+=\`<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-top:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div style="font-size:11px;font-weight:700;color:var(--amber);text-transform:uppercase;">Funnel Health</div>
+        <div style="font-size:18px;font-weight:800;color:var(--green);">\${convRate}%<span style="font-size:9px;color:var(--text-tertiary);font-weight:600;margin-left:4px;">conversion</span></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        \${funnelData.map(f=>'<div><div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="font-size:11px;font-weight:600;color:var(--text-secondary);">'+f.l+'</span><span style="font-size:11px;font-weight:800;color:'+f.cl+';">'+f.c+'</span></div><div style="height:6px;background:var(--bg);border-radius:20px;overflow:hidden;"><div style="height:100%;width:'+Math.max(Math.round(f.c/maxF*100),f.c>0?6:0)+'%;background:'+f.cl+';border-radius:20px;opacity:0.8;transition:width 0.6s ease;"></div></div></div>').join('')}
+      </div>
+      \${stages.stuck>0?'<div style="margin-top:12px;padding:10px 12px;background:rgba(240,178,74,0.06);border:1px solid rgba(240,178,74,0.15);border-radius:8px;font-size:11px;color:var(--amber);"><b>⚠ Action needed:</b> '+stages.stuck+' patient'+(stages.stuck>1?'s are':' is')+' stuck. <span onclick="switchTab(\\'logs\\',null);filterByFunnel(\\'stuck\\')" style="text-decoration:underline;cursor:pointer;">View stuck patients →</span></div>':''}
+    </div>\`;
+
 
     el.innerHTML=html;
   }catch(e){
@@ -1920,7 +1922,8 @@ function toggleTheme(){
   document.documentElement.classList.toggle('light');
   const isLight=document.documentElement.classList.contains('light');
   localStorage.setItem('drsean_theme',isLight?'light':'dark');
-  // 차트 다시 그리기 — 현재 활성 탭 재로드
+  // 캐시 초기화 + 차트 다시 그리기
+  homeOk=false;anaOk=false;
   const activeTab=document.querySelector('.section.active')?.id?.replace('sec-','');
   if(activeTab==='home')loadHome();
   if(activeTab==='analytics')loadAnalytics();
@@ -1938,7 +1941,10 @@ function logout(){sessionStorage.clear();location.replace('/');}
 // ── Session ──
 if(!sessionStorage.getItem('drsean_user'))location.replace('/');
 (async()=>{
-  try{ await Promise.all([loadConfig(),loadStatus(),loadHome()]); }catch(e){ console.error('Init error:',e); }
+  try{ await Promise.all([loadConfig(),loadStatus()]); }catch(e){ console.error('Init error:',e); }
+  // 저장된 탭 복원
+  const savedTab=localStorage.getItem('drsean_tab')||'home';
+  switchTab(savedTab,null);
   document.querySelector('.content').classList.add('loaded');
 })();
 <\/script>
