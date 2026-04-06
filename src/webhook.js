@@ -86,6 +86,13 @@ export async function handleWebhook(request, env) {
         const metadata = result.metadata || {};
         const quickReplies = result.quickReplies || null;
 
+        // 자연스러운 답변 딜레이 (Settings에서 조정 가능)
+        const cfg = await getConfig(env);
+        const dShort = (cfg.delayShort || 30) * 1000;
+        const dLong = (cfg.delayLong || 120) * 1000;
+        const delay = Math.min(dLong, Math.max(dShort, reply.length * ((cfg.delayMedium||60)*1000/100)));
+        await new Promise(r => setTimeout(r, delay));
+
         // Instagram API로 답장 전송
         await sendMessage(senderId, reply, env, quickReplies);
 

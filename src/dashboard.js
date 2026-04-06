@@ -232,7 +232,7 @@ async function getInstagramStats(env) {
     }
     // 전체 게시물 (페이지네이션으로 모두 가져오기)
     let allPosts = [];
-    let nextUrl = `https://graph.instagram.com/v21.0/me/media?fields=id,caption,like_count,comments_count,timestamp,media_type,thumbnail_url,media_url&limit=200`;
+    let nextUrl = `https://graph.instagram.com/v21.0/me/media?fields=id,caption,like_count,comments_count,timestamp,media_type,thumbnail_url,media_url,permalink&limit=200`;
     while (nextUrl && allPosts.length < 500) {
       const mediaRes = await fetch(nextUrl, { headers: { 'Authorization': `Bearer ${token}` } });
       if (!mediaRes.ok) break;
@@ -256,12 +256,15 @@ async function getInstagramStats(env) {
           }
         } catch(e) {}
         return {
+          permalink: p.permalink || '',
           caption: (p.caption || '').substring(0, 80),
           likes: p.like_count || 0,
           comments: p.comments_count || 0,
           views,
           date: p.timestamp,
           type: p.media_type,
+          thumbnail: p.thumbnail_url || '',
+          media: p.media_url || '',
         };
       }));
       stats.posts = postsWithInsights;

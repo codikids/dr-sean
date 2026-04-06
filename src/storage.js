@@ -69,6 +69,7 @@ export async function logMessage(env, log) {
     replied: (log.replied || '').substring(0, 500),
     timestamp: log.timestamp || Date.now(),
     createdAt: new Date().toISOString(),
+    reviewed: log.reviewed || false,
   };
 
   try {

@@ -31,13 +31,26 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
     --radius: 16px; --radius-sm: 10px; --radius-xs: 6px;
     --shadow: 0 2px 8px rgba(0,0,0,0.15); --shadow-lg: 0 8px 32px rgba(0,0,0,0.25);
     --nav-h: 64px;
+    --chart-label: #E0E4F0; --chart-grid: rgba(140,155,200,0.06);
+  }
+  .light {
+    --bg: #F5F6FA; --bg-elevated: #FFFFFF; --surface: #FFFFFF; --surface-2: #F0F1F5; --surface-3: #E8E9EF;
+    --border: rgba(0,0,0,0.08); --border-hover: rgba(0,0,0,0.15);
+    --text: #1A1D2E; --text-secondary: #4A5068; --text-tertiary: #6B7394;
+    --accent: #4A7ADE; --accent-soft: rgba(74,122,222,0.1); --accent-glow: rgba(74,122,222,0.2);
+    --green: #2BB573; --green-soft: rgba(43,181,115,0.1);
+    --red: #E05252; --red-soft: rgba(224,82,82,0.1);
+    --amber: #D9982F; --amber-soft: rgba(217,152,47,0.1);
+    --cyan: #2EACC8; --purple: #8B6FD6;
+    --shadow: 0 2px 8px rgba(0,0,0,0.06); --shadow-lg: 0 8px 32px rgba(0,0,0,0.1);
+    --chart-label: #4A5068; --chart-grid: rgba(0,0,0,0.06);
   }
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
   body { font-family:'Inter',system-ui,-apple-system,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; min-height:100dvh; overflow-x:hidden; -webkit-font-smoothing:antialiased; }
 
   /* ── Header ── */
   .header {
-    position:sticky; top:0; z-index:50; background:rgba(9,11,20,0.85); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+    position:sticky; top:0; z-index:50; background:var(--bg-elevated); opacity:0.95; backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
     padding:14px 20px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border);
   }
   .header-left { display:flex; align-items:center; gap:10px; }
@@ -46,7 +59,9 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
   .header-right { display:flex; align-items:center; gap:8px; }
   .bot-pill {
     display:flex; align-items:center; gap:5px; padding:5px 12px; border-radius:20px; font-size:11px; font-weight:600; letter-spacing:0.2px;
+    cursor:pointer; transition:all 0.15s;
   }
+  .bot-pill:hover { opacity:0.8; transform:scale(1.03); }
   .bot-pill.on { background:var(--green-soft); color:var(--green); }
   .bot-pill.off { background:var(--red-soft); color:var(--red); }
   .bot-pill .dot { width:6px; height:6px; border-radius:50%; }
@@ -83,7 +98,7 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
     padding:18px; margin-bottom:12px; transition:border-color 0.2s;
   }
   .card:hover { border-color:var(--border-hover); transform:translateY(-1px); box-shadow:0 4px 12px rgba(0,0,0,0.1); }
-  .card-header { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:var(--text-tertiary); margin-bottom:14px; }
+  .card-header { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:var(--text-secondary); margin-bottom:14px; }
 
   /* ── Profile ── */
   .profile {
@@ -104,9 +119,9 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
   }
   .stat-card:hover { border-color:var(--border-hover); transform:translateY(-1px); }
   .stat-icon { font-size:18px; margin-bottom:8px; }
-  .stat-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.6px; color:var(--text-tertiary); margin-bottom:4px; }
+  .stat-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.6px; color:var(--text-secondary); margin-bottom:4px; }
   .stat-value { font-size:22px; font-weight:800; letter-spacing:-0.5px; line-height:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .stat-sub { font-size:10px; color:var(--text-tertiary); margin-top:4px; font-weight:500; }
+  .stat-sub { font-size:10px; color:var(--text-secondary); margin-top:4px; font-weight:500; }
 
   /* ── Charts ── */
   .chart-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:18px; margin-bottom:12px; }
@@ -334,6 +349,9 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
       <div class="dot"></div>
       <span id="botLabel">Active</span>
     </div>
+    <button class="header-btn" onclick="toggleTheme()" id="themeBtn" title="Toggle theme">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    </button>
     <button class="header-btn" onclick="logout()" title="Logout">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
     </button>
@@ -401,6 +419,9 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
       </div>
       <div class="chart-wrap chart-wrap-lg"><canvas id="chartEngagement"></canvas></div>
     </div>
+
+    <!-- Hot Post -->
+    <div id="hotPost"></div>
   </div>
 
   <!-- DM ANALYTICS -->
@@ -570,6 +591,13 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
         <div style="position:relative;"><span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-tertiary);font-weight:600;font-size:13px;">$</span><input class="form-input" id="claudeMonthlyLimit" type="number" placeholder="e.g. 10" min="1" step="1" style="padding-left:24px;"></div>
         <p style="font-size:10px;color:var(--text-tertiary);margin-top:4px;">AI replies stop when limit is reached. Fallback message will be used instead.</p>
         <div id="aiUsageInfo" style="margin-top:12px;padding:10px;background:var(--bg);border-radius:8px;"></div>
+        <label class="form-label" style="margin-top:14px;">Reply Delay (seconds)</label>
+        <div style="display:flex;gap:6px;">
+          <div style="flex:1;"><label style="font-size:9px;color:var(--text-tertiary);">Short</label><input class="form-input" id="delayShort" type="number" placeholder="30" min="0" step="5" style="font-size:12px;"></div>
+          <div style="flex:1;"><label style="font-size:9px;color:var(--text-tertiary);">Medium</label><input class="form-input" id="delayMedium" type="number" placeholder="60" min="0" step="5" style="font-size:12px;"></div>
+          <div style="flex:1;"><label style="font-size:9px;color:var(--text-tertiary);">Long</label><input class="form-input" id="delayLong" type="number" placeholder="120" min="0" step="5" style="font-size:12px;"></div>
+        </div>
+        <p style="font-size:10px;color:var(--text-tertiary);margin-top:4px;">Simulates human typing speed. Set 0 for instant reply.</p>
         <button class="btn-save-card" onclick="saveConfig()">Save</button>
       </div>
     </div>
@@ -908,9 +936,8 @@ async function loadHome(){
               <div style="font-size:9px;color:var(--text-tertiary);">~1 min/reply</div>
             </div>
             <div style="padding:8px;background:var(--bg);border-radius:8px;overflow:hidden;">
-              <div style="font-size:9px;color:var(--text-tertiary);font-weight:600;text-transform:uppercase;white-space:nowrap;">Active</div>
-              <div style="font-size:18px;font-weight:800;margin-top:3px;">\${daysActive}d</div>
-              <div style="font-size:9px;color:var(--text-tertiary);">since \${config.botStartDate}</div>
+              <div style="font-size:9px;color:var(--text-tertiary);font-weight:600;text-transform:uppercase;white-space:nowrap;">Return Rate</div>
+              \${(()=>{const uf={},ul={};logs.forEach(l=>{const k=l.username||'';if(!k||!l.createdAt)return;const t=new Date(l.createdAt).getTime();if(!uf[k]||t<uf[k])uf[k]=t;if(!ul[k]||t>ul[k])ul[k]=t;});const total=Object.keys(uf).length;const returning=Object.keys(uf).filter(k=>ul[k]-uf[k]>86400000).length;const rate=total>0?Math.round(returning/total*100):0;return'<div style="font-size:18px;font-weight:800;margin-top:3px;color:var(--cyan);">'+rate+'%</div><div style="font-size:9px;color:var(--text-tertiary);">'+returning+'/'+total+' returned';})()}
             </div>
           </div>
           <div style="margin-top:8px;padding:12px;background:var(--bg);border-radius:8px;border-left:3px solid #5B8DEF;">
@@ -935,12 +962,16 @@ async function loadHome(){
       {label:'Likes',data:p.map(x=>x.likes),backgroundColor:'#5B8DEF',borderRadius:5,barPercentage:0.6,hidden:true},
       {label:'Comments',data:p.map(x=>x.comments),backgroundColor:'#3DD68C',borderRadius:5,barPercentage:0.6,hidden:true},
     ];
-    const engOpts=cOpts();engOpts.plugins.legend={display:false};
+    const engOpts=cOpts();engOpts.plugins.legend={display:false};engOpts.animation={duration:300,easing:'easeOutQuart'};engOpts.transitions={active:{animation:{duration:300}}};
     window._engChart=new Chart(document.getElementById('chartEngagement'),{
       type:'bar',
       data:{labels,datasets:ds},
       options:engOpts
     });
+
+    // 핫 게시물 — 카테고리별 TOP 1 (차트 토글 연동)
+    window._engPosts=ig.posts;
+    renderHotPost(0);
   }
 }
 
@@ -960,18 +991,27 @@ async function loadAnalytics(){
   }
   document.getElementById('statDMs').textContent=logs.length;
 
-  const countries={},tags={},ct={},countryRaw={};
+  // 사용자 기준 집계 (사용자당 첫 concern + 국가)
+  const userFirst={};
   logs.forEach(l=>{
-    const c=cleanC(l.country);
-    if(c){countries[c]=(countries[c]||0)+1;if(!countryRaw[c])countryRaw[c]=l.country;if(!ct[c])ct[c]={};if(l.tag&&l.tag!=='stuck'&&l.tag!=='paused'&&l.tag!=='direct'&&l.tag!=='consultation')ct[c][l.tag]=(ct[c][l.tag]||0)+1;}
-    if(l.tag&&l.tag!=='stuck'&&l.tag!=='paused'&&l.tag!=='direct'&&l.tag!=='consultation')tags[l.tag]=(tags[l.tag]||0)+1;
+    const k=l.username||l.senderId||'';if(!k)return;
+    if(!userFirst[k])userFirst[k]={country:'',concern:'',raw:''};
+    if(!userFirst[k].country&&cleanC(l.country)){userFirst[k].country=cleanC(l.country);userFirst[k].raw=l.country;}
+    if(!userFirst[k].concern&&l.tag&&!SKIP_TAGS.has(l.tag))userFirst[k].concern=l.tag;
+  });
+  const countries={},tags={},ct={},countryRaw={};
+  Object.values(userFirst).forEach(u=>{
+    const c=u.country;
+    if(c){countries[c]=(countries[c]||0)+1;if(!countryRaw[c])countryRaw[c]=u.raw;if(!ct[c])ct[c]={};if(u.concern)ct[c][u.concern]=(ct[c][u.concern]||0)+1;}
+    if(u.concern)tags[u.concern]=(tags[u.concern]||0)+1;
   });
   const tc=Object.entries(countries).sort((a,b)=>b[1]-a[1])[0];
   const tt=Object.entries(tags).sort((a,b)=>b[1]-a[1])[0];
   document.getElementById('statTopCountry').textContent=tc?shortC(countryRaw[tc[0]]||tc[0]):'-';
   document.getElementById('statTopTag').textContent=tt?tt[0]:'-';
 
-  const dOpts={responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#B0B8D0',font:{size:10,family:'Inter'},padding:8,usePointStyle:true,pointStyleWidth:7}}}};
+  const cl=chartColor(),cg=chartGrid();
+  const dOpts={responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:cl,font:{size:10,family:'Inter'},padding:8,usePointStyle:true,pointStyleWidth:7}}}};
 
   // Activity
   const days=[];for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);days.push(d.toISOString().split('T')[0]);}
@@ -985,9 +1025,9 @@ async function loadAnalytics(){
 
   // Country Concerns
   if(Object.keys(ct).length){
-    const cl=Object.keys(ct).sort((a,b)=>Object.values(ct[b]).reduce((s,v)=>s+v,0)-Object.values(ct[a]).reduce((s,v)=>s+v,0)).slice(0,8);
-    const at=[...new Set(cl.flatMap(c=>Object.keys(ct[c])))];
-    new Chart(document.getElementById('chartCountryConcerns'),{type:'bar',data:{labels:cl.map(c=>cleanC(c)),datasets:at.map((t,i)=>({label:t,data:cl.map(c=>ct[c][t]||0),backgroundColor:CC[i%CC.length],borderRadius:3}))},options:{...cOpts(),scales:{x:{stacked:true,ticks:{color:'#B0B8D0',font:{size:10}},grid:{display:false},border:{display:false}},y:{stacked:true,ticks:{color:'#8A94B0',font:{size:10}},grid:{color:'rgba(140,155,200,0.05)'},border:{display:false},beginAtZero:true}}}});
+    const ccl=Object.keys(ct).sort((a,b)=>Object.values(ct[b]).reduce((s,v)=>s+v,0)-Object.values(ct[a]).reduce((s,v)=>s+v,0)).slice(0,8);
+    const at=[...new Set(ccl.flatMap(c=>Object.keys(ct[c])))];
+    new Chart(document.getElementById('chartCountryConcerns'),{type:'bar',data:{labels:ccl.map(c=>cleanC(c)),datasets:at.map((t,i)=>({label:t,data:ccl.map(c=>ct[c][t]||0),backgroundColor:CC[i%CC.length],borderRadius:3}))},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:cl,font:{size:10,family:'Inter'},usePointStyle:true,pointStyleWidth:7,padding:8}}},scales:{x:{stacked:true,ticks:{color:cl,font:{size:10}},grid:{display:false},border:{display:false}},y:{stacked:true,ticks:{color:cl,font:{size:10}},grid:{color:cg},border:{display:false},beginAtZero:true}}}});
   }
 }
 
@@ -996,11 +1036,41 @@ function engSwitch(idx){
   if(!window._engChart)return;
   const c=window._engChart;
   c.data.datasets.forEach((ds,i)=>{ds.hidden=i!==idx;});
-  c.update();
+  c.update({duration:300,easing:'easeOutQuart'});
   const btns=document.querySelectorAll('#engToggle button');
   btns.forEach((b,i)=>{b.style.background=i===idx?ENG_COLORS[i]:'var(--bg)';b.style.color=i===idx?'#fff':'var(--text-tertiary)';});
+  renderHotPost(idx);
 }
-function cOpts(){return{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#A0A8C0',font:{size:10,family:'Inter'},usePointStyle:true,pointStyleWidth:7,padding:10,generateLabels:function(chart){return chart.data.datasets.map((ds,i)=>({text:ds.label,fillStyle:ds.hidden?'rgba(100,100,100,0.3)':ds.backgroundColor,strokeStyle:'transparent',lineWidth:0,pointStyle:'circle',hidden:false,datasetIndex:i}));}}}},scales:{x:{ticks:{color:'#6B7394',font:{size:10,family:'Inter'}},grid:{color:'rgba(140,155,200,0.04)'},border:{display:false}},y:{ticks:{color:'#6B7394',font:{size:10,family:'Inter'}},grid:{color:'rgba(140,155,200,0.04)'},border:{display:false},beginAtZero:true}}};}
+function renderHotPost(idx){
+  try{
+  const hp=document.getElementById('hotPost');
+  if(!hp||!window._engPosts?.length){if(hp)hp.innerHTML='';return;}
+  const sortKey=['views','likes','comments'][idx]||'views';
+  const labels=['Most Viewed','Most Liked','Most Commented'][idx];
+  const colors=['var(--cyan)','#5B8DEF','var(--green)'][idx];
+  const top5=[...window._engPosts].sort((a,b)=>(b[sortKey]||0)-(a[sortKey]||0)).slice(0,5);
+  if(!top5.length){hp.innerHTML='';return;}
+  hp.innerHTML='<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-top:10px;overflow:hidden;">'+
+    '<div style="padding:12px 14px 8px;font-size:9px;font-weight:700;color:'+colors+';text-transform:uppercase;">'+labels+' — Top 5</div>'+
+    top5.map((hot,i)=>{
+      const thumb=hot.type==='VIDEO'?(hot.thumbnail||hot.media):(hot.media||hot.thumbnail);
+      const date=hot.date?new Date(hot.date).toLocaleDateString('en',{month:'short',day:'numeric'}):'';
+      const val=sortKey==='views'?fmt(hot.views||0)+' views':sortKey==='likes'?fmt(hot.likes)+' likes':fmt(hot.comments)+' comments';
+      const link=hot.permalink||'';
+      return '<a href="'+(link||'#')+'" target="_blank" rel="noopener" style="display:flex;gap:10px;align-items:center;padding:8px 14px;text-decoration:none;color:inherit;'+(i<4?'border-bottom:1px solid var(--border);':'')+'">'+
+        '<div style="font-size:14px;font-weight:800;color:'+colors+';width:18px;text-align:center;flex-shrink:0;">'+(i+1)+'</div>'+
+        (thumb?'<img src="'+thumb+'" style="width:44px;height:44px;object-fit:cover;border-radius:6px;flex-shrink:0;" onerror="this.remove()">':'')+
+        '<div style="min-width:0;flex:1;">'+
+        '<div style="font-size:10px;color:var(--text);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(hot.caption||'No caption')+'</div>'+
+        '<div style="font-size:9px;color:var(--text-tertiary);margin-top:2px;">'+val+' · '+date+'</div>'+
+        '</div></a>';
+    }).join('')+
+    '</div>';
+  }catch(e){console.error('renderHotPost error:',e);}
+}
+function chartColor(){return getComputedStyle(document.documentElement).getPropertyValue('--chart-label').trim()||'#E0E4F0';}
+function chartGrid(){return getComputedStyle(document.documentElement).getPropertyValue('--chart-grid').trim()||'rgba(140,155,200,0.06)';}
+function cOpts(){const cl=chartColor(),cg=chartGrid();return{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:cl,font:{size:10,family:'Inter'},usePointStyle:true,pointStyleWidth:7,padding:10,generateLabels:function(chart){return chart.data.datasets.map((ds,i)=>({text:ds.label,fontColor:cl,fillStyle:ds.hidden?'rgba(100,100,100,0.3)':ds.backgroundColor,strokeStyle:'transparent',lineWidth:0,pointStyle:'circle',hidden:false,datasetIndex:i}));}}}},scales:{x:{ticks:{color:cl,font:{size:10,family:'Inter'}},grid:{color:cg},border:{display:false}},y:{ticks:{color:cl,font:{size:10,family:'Inter'}},grid:{color:cg},border:{display:false},beginAtZero:true}}};}
 function fmt(n){if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return String(n||0);}
 
 // ── Config ──
@@ -1043,6 +1113,9 @@ async function loadConfig(){
   document.getElementById('claudeApiKey').value = config.claudeApiKey || '';
   document.getElementById('claudeModel').value = config.claudeModel || 'claude-haiku-4-5-20251001';
   document.getElementById('claudeMonthlyLimit').value = config.claudeMonthlyLimit || '';
+  document.getElementById('delayShort').value = config.delayShort || 30;
+  document.getElementById('delayMedium').value = config.delayMedium || 60;
+  document.getElementById('delayLong').value = config.delayLong || 120;
   loadAiUsage();
   // Bot performance
   document.getElementById('botStartDate').value = config.botStartDate || '';
@@ -1059,6 +1132,9 @@ async function saveConfig(){
   config.claudeApiKey = document.getElementById('claudeApiKey').value;
   config.claudeModel = document.getElementById('claudeModel').value;
   config.claudeMonthlyLimit = parseInt(document.getElementById('claudeMonthlyLimit').value) || 0;
+  config.delayShort = parseInt(document.getElementById('delayShort').value) || 30;
+  config.delayMedium = parseInt(document.getElementById('delayMedium').value) || 60;
+  config.delayLong = parseInt(document.getElementById('delayLong').value) || 120;
   config.botStartDate = document.getElementById('botStartDate').value;
   config.botStartFollowers = parseInt(document.getElementById('botStartFollowers').value) || 0;
   const coVal = document.getElementById('countryOptions').value;
@@ -1578,7 +1654,7 @@ function renderLogs(){
     const isPaused=patientData[l.username]?.paused;
     const isReviewed=l.reviewed;
     const isDirect=l.tag==='direct';
-    const globalIdx=allLogs.indexOf(l);
+    const globalIdx=allLogs.findIndex(x=>x.senderId===l.senderId&&x.timestamp===l.timestamp&&x.received===l.received);
     return \`<div class="log-item \${noCountry?'log-no-country':''} \${isReviewed?'reviewed':'unreviewed'}" style="cursor:pointer;" onclick="if(!event.target.closest('button,.log-action-btn,.log-expand,input,textarea'))openPatient('\${esc(l.username)}','\${esc(l.senderId)}')">
       <div class="log-header">
         <div class="log-badges">
@@ -1648,6 +1724,10 @@ async function toggleReview(idx){
   });
   renderLogs();renderTodaySummary(allLogs);
   await Promise.all(promises);
+  // 서버와 동기화 — 로그 다시 fetch
+  allLogs=await(await fetch('/api/logs')).json();
+  if(!Array.isArray(allLogs))allLogs=[];
+  applyFilters();
 }
 
 // ── Direct Reply ──
@@ -1778,6 +1858,23 @@ function exportCSV(){
   toast('CSV exported!');
 }
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000);}
+function toggleTheme(){
+  document.documentElement.classList.toggle('light');
+  const isLight=document.documentElement.classList.contains('light');
+  localStorage.setItem('drsean_theme',isLight?'light':'dark');
+  // 차트 다시 그리기 — 현재 활성 탭 재로드
+  const activeTab=document.querySelector('.section.active')?.id?.replace('sec-','');
+  if(activeTab==='home')loadHome();
+  if(activeTab==='analytics')loadAnalytics();
+  if(activeTab==='insights')loadInsights();
+  // 아이콘 전환
+  const btn=document.getElementById('themeBtn');
+  btn.innerHTML=isLight
+    ?'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>'
+    :'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>';
+}
+// 저장된 테마 복원
+if(localStorage.getItem('drsean_theme')==='light'){document.documentElement.classList.add('light');document.getElementById('themeBtn').innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>';}
 function logout(){sessionStorage.clear();location.replace('/');}
 
 // ── Session ──
