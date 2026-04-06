@@ -128,11 +128,18 @@ export async function handleDashboardAPI(request, env, path) {
       return json({ ok: true }, 200, cors);
     }
 
-    // POST /api/logs/review — 로그 reviewed 토글
+    // POST /api/logs/review — 로그 reviewed 토글 (단일 또는 벌크)
     if (path === '/api/logs/review' && request.method === 'POST') {
-      const { index, reviewed } = await request.json();
+      const body = await request.json();
       const logs = await getRecentLogs(env);
-      if (logs[index]) { logs[index].reviewed = reviewed; await updateLogs(env, logs); }
+      if (body.username !== undefined) {
+        // 벌크: username 기반으로 전체 처리
+        logs.forEach(l => { if ((l.username || l.senderId) === body.username) l.reviewed = body.reviewed; });
+      } else if (body.index !== undefined) {
+        // 단일 index
+        if (logs[body.index]) logs[body.index].reviewed = body.reviewed;
+      }
+      await updateLogs(env, logs);
       return json({ ok: true }, 200, cors);
     }
 

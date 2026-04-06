@@ -90,8 +90,8 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
   .nav-item.active .nav-label { color:var(--accent); }
 
   /* ── Content ── */
-  .content { max-width:600px; margin:0 auto; padding:16px 16px 300px; }
-  .section { padding-bottom:80px; }
+  .content { max-width:600px; margin:0 auto; padding:16px 16px calc(var(--nav-h) + 20px); }
+  .section { padding-bottom:10px; }
 
   /* ── Cards ── */
   .card {
@@ -178,7 +178,7 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
   .log-item { padding:14px; margin-bottom:8px; background:var(--bg-elevated); border:1px solid var(--border); border-radius:var(--radius-sm); }
   .log-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
   .log-time { font-size:10px; color:var(--text-tertiary); font-weight:600; letter-spacing:0.3px; }
-  .log-badges { display:flex; gap:5px; flex-wrap:wrap; }
+  .log-badges { display:flex; gap:5px; flex-wrap:wrap; align-items:center; }
   .badge { padding:3px 8px; border-radius:var(--radius-xs); font-size:10px; font-weight:600; letter-spacing:0.2px; }
   .badge-user { background:var(--accent-soft); color:var(--accent); }
   .badge-country { background:rgba(100,140,180,0.15); color:#7EB0D5; white-space:nowrap; }
@@ -206,15 +206,15 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
   .log-bubble-text.expanded { display:block; -webkit-line-clamp:unset; }
   .log-expand { background:none; border:none; color:var(--accent); font-size:11px; font-weight:600; cursor:pointer; padding:4px 0; font-family:'Inter',sans-serif; }
   .log-time-relative { color:var(--accent); font-size:10px; font-weight:600; white-space:nowrap; flex-shrink:0; }
-  .log-no-country { opacity:0.6; }
+  .log-no-country { opacity:1; }
 
   /* ── Review/Actions ── */
   .log-actions { display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; align-items:center; }
   .log-action-btn { background:var(--surface-2); border:1px solid var(--border); color:var(--text-tertiary); padding:5px 10px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:600; font-family:'Inter',sans-serif; transition:all 0.15s; display:flex; align-items:center; gap:4px; }
   .log-action-btn:hover { border-color:var(--border-hover); color:var(--text); }
   .log-action-btn.active { background:var(--green-soft); border-color:var(--green); color:var(--green); }
-  .log-item.reviewed { border-left:3px solid var(--green); }
-  .log-item.unreviewed { border-left:3px solid var(--amber); }
+  .log-item.reviewed { border-left:none; opacity:0.6; }
+  .log-item.unreviewed { border-left:none; opacity:1; }
   .badge-vip { background:rgba(245,158,11,0.15); color:#F0B24A; }
   .badge-paused { background:var(--red-soft); color:var(--red); }
   .badge-direct { background:rgba(167,139,250,0.12); color:var(--purple); }
@@ -275,21 +275,23 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
   .skel-profile { height:52px; width:52px; border-radius:14px; }
 
   /* ── Settings Accordion ── */
-  .setting-section { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); margin-bottom:10px; overflow:hidden; }
+  .settings-list { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+  .setting-section { border-bottom:1px solid var(--border); }
+  .setting-section:last-child { border-bottom:none; }
   .setting-header {
-    display:flex; align-items:center; gap:12px; padding:16px 18px; cursor:pointer; transition:background 0.15s;
+    display:flex; align-items:center; gap:12px; padding:16px 16px; cursor:pointer; transition:background 0.15s;
     -webkit-user-select:none; user-select:none;
   }
   .setting-header:hover { background:var(--surface-2); }
   .setting-header:active { background:var(--surface-3); }
-  .setting-icon { width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-  .setting-icon svg { width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+  .setting-icon { display:flex; width:20px; height:20px; flex-shrink:0; align-items:center; justify-content:center; background:none !important; }
+  .setting-icon svg { width:16px; height:16px; stroke:var(--text-tertiary); fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
   .setting-info { flex:1; min-width:0; }
-  .setting-title { font-size:13px; font-weight:700; letter-spacing:-0.1px; }
-  .setting-desc { font-size:10px; color:var(--text-tertiary); margin-top:2px; }
-  .setting-arrow { color:var(--text-tertiary); font-size:12px; transition:transform 0.2s; }
-  .setting-section.open .setting-arrow { transform:rotate(180deg); }
-  .setting-body { padding:8px 14px 14px; display:none; border-top:1px solid var(--border); margin-top:4px; }
+  .setting-title { font-size:14px; font-weight:600; letter-spacing:-0.1px; }
+  .setting-desc { font-size:11px; color:var(--text-tertiary); margin-top:1px; }
+  .setting-arrow { color:var(--text-tertiary); font-size:14px; transition:transform 0.2s; margin-left:8px; }
+  .setting-section.open .setting-arrow { transform:rotate(90deg); }
+  .setting-body { padding:8px 16px 16px; display:none; border-top:1px solid var(--border); }
   .btn-save-card { width:100%;margin-top:12px;padding:10px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;font-family:'Inter',sans-serif;cursor:pointer;transition:all 0.15s; }
   .btn-save-card:hover { opacity:0.9; }
   .btn-save-card:active { transform:scale(0.98); }
@@ -472,12 +474,13 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
       <div><div style="font-size:15px;font-weight:700;">Settings</div><div style="font-size:10px;color:var(--text-tertiary);">Configure your bot & clinic</div></div>
     </div>
 
+    <div class="settings-list">
     <!-- 1. Clinic Info + Treatments -->
     <div class="setting-section">
       <div class="setting-header" onclick="toggleSetting(this)">
-        <div class="setting-icon" style="background:var(--accent-soft);color:var(--accent);"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
+        <div class="setting-icon"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
         <div class="setting-info"><div class="setting-title">Clinic Info</div><div class="setting-desc">Name, address, hours, treatments</div></div>
-        <span class="setting-arrow">&#9660;</span>
+        <span class="setting-arrow">›</span>
       </div>
       <div class="setting-body">
         <label class="form-label">Clinic Name</label>
@@ -499,9 +502,9 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
     <!-- 3. Greeting Message -->
     <div class="setting-section">
       <div class="setting-header" onclick="toggleSetting(this)">
-        <div class="setting-icon" style="background:rgba(74,200,232,0.12);color:var(--cyan);"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
+        <div class="setting-icon"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
         <div class="setting-info"><div class="setting-title">Greeting Message</div><div class="setting-desc">First DM auto-reply</div></div>
-        <span class="setting-arrow">&#9660;</span>
+        <span class="setting-arrow">›</span>
       </div>
       <div class="setting-body">
         <label class="form-label">First DM auto-message</label>
@@ -513,9 +516,9 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
     <!-- 3. Quick Reply Buttons -->
     <div class="setting-section">
       <div class="setting-header" onclick="toggleSetting(this)">
-        <div class="setting-icon" style="background:rgba(61,214,140,0.12);color:var(--green);"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg></div>
+        <div class="setting-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg></div>
         <div class="setting-info"><div class="setting-title">Quick Reply Buttons</div><div class="setting-desc">Country & skin concern selection options</div></div>
-        <span class="setting-arrow">&#9660;</span>
+        <span class="setting-arrow">›</span>
       </div>
       <div class="setting-body">
         <label class="form-label">Country Buttons</label>
@@ -531,9 +534,9 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
     <!-- 4. AI Settings -->
     <div class="setting-section">
       <div class="setting-header" onclick="toggleSetting(this)">
-        <div class="setting-icon" style="background:rgba(167,139,250,0.12);color:var(--purple);"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+        <div class="setting-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
         <div class="setting-info"><div class="setting-title">AI Settings</div><div class="setting-desc">Prompt, rules & fallback message</div></div>
-        <span class="setting-arrow">&#9660;</span>
+        <span class="setting-arrow">›</span>
       </div>
       <div class="setting-body">
         <label class="form-label">AI Consultation Prompt</label>
@@ -552,9 +555,9 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
     <!-- 7. AI Integration -->
     <div class="setting-section">
       <div class="setting-header" onclick="toggleSetting(this)">
-        <div class="setting-icon" style="background:rgba(169,132,255,0.12);color:#A984FF;"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
+        <div class="setting-icon"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
         <div class="setting-info"><div class="setting-title">AI Integration</div><div class="setting-desc">Claude API key & monthly usage limit</div></div>
-        <span class="setting-arrow">&#9660;</span>
+        <span class="setting-arrow">›</span>
       </div>
       <div class="setting-body">
         <label class="form-label">Claude API Key</label>
@@ -587,7 +590,7 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
     <!-- 8. Comment Auto-Reply -->
     <div class="setting-section">
       <div class="setting-header" onclick="toggleSetting(this)">
-        <div class="setting-icon" style="background:var(--red-soft);color:var(--red);"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg></div>
+        <div class="setting-icon"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg></div>
         <div class="setting-info">
           <div class="setting-title" style="display:flex;align-items:center;gap:8px;">Comment Auto-Reply
             <label style="display:flex;align-items:center;gap:4px;cursor:pointer;margin:0;font-size:11px;color:var(--text-tertiary);font-weight:500;" onclick="event.stopPropagation()">
@@ -596,7 +599,7 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
           </div>
           <div class="setting-desc">Auto-reply to post comments</div>
         </div>
-        <span class="setting-arrow">&#9660;</span>
+        <span class="setting-arrow">›</span>
       </div>
       <div class="setting-body">
         <label class="form-label">Default Reply</label>
@@ -613,9 +616,9 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
     <!-- 9. Bot Performance Tracking -->
     <div class="setting-section">
       <div class="setting-header" onclick="toggleSetting(this)">
-        <div class="setting-icon" style="background:rgba(61,214,140,0.12);color:var(--green);"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="currentColor" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="setting-icon"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="currentColor" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
         <div class="setting-info"><div class="setting-title">Bot Performance Tracking</div><div class="setting-desc">Set start date & initial followers to track growth</div></div>
-        <span class="setting-arrow">&#9660;</span>
+        <span class="setting-arrow">›</span>
       </div>
       <div class="setting-body">
         <label class="form-label">Bot Start Date</label>
@@ -625,6 +628,7 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
         <button class="btn-save-card" onclick="saveConfig()">Save</button>
       </div>
     </div>
+    </div><!-- settings-list -->
   </div>
 
   <!-- KEYWORDS -->
@@ -835,6 +839,7 @@ function switchTab(name, el) {
   const tabs=['home','analytics','logs','insights','settings'];
   document.querySelectorAll('.bottom-nav .nav-item').forEach((n,i)=>{n.classList.toggle('active',tabs[i]===name);});
   localStorage.setItem('drsean_tab',name);
+  window.scrollTo(0,0);
   if(name==='home') loadHome();
   if(name==='analytics') loadAnalytics();
   if(name==='logs') loadLogs();
@@ -1510,23 +1515,23 @@ function renderTodaySummary(logs){
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
         <div class="stat-label" style="margin:0;">Patient Funnel</div>
         <div style="display:flex;gap:10px;font-size:10px;font-weight:600;">
-          <span onclick="filterByPurpose('skin')" style="cursor:pointer;color:var(--green);">Skin \${purposeCounts.skin}</span>
-          <span onclick="filterByPurpose('booking')" style="cursor:pointer;color:#5B8DEF;">Booking \${purposeCounts.booking}</span>
-          <span onclick="filterByPurpose('business')" style="cursor:pointer;color:#FF8C42;">Biz \${purposeCounts.business}</span>
+          <span data-purpose="skin" onclick="filterByPurpose('skin')" style="cursor:pointer;color:var(--green);padding:2px 8px;border-radius:10px;transition:all 0.2s;">Skin \${purposeCounts.skin}</span>
+          <span data-purpose="booking" onclick="filterByPurpose('booking')" style="cursor:pointer;color:#5B8DEF;padding:2px 8px;border-radius:10px;transition:all 0.2s;">Booking \${purposeCounts.booking}</span>
+          <span data-purpose="business" onclick="filterByPurpose('business')" style="cursor:pointer;color:#FF8C42;padding:2px 8px;border-radius:10px;transition:all 0.2s;">Biz \${purposeCounts.business}</span>
         </div>
       </div>
       <div style="display:flex;gap:4px;flex-wrap:nowrap;">
-        <div onclick="filterByFunnel('notfollow')" style="flex:1;text-align:center;padding:6px 2px;background:var(--bg);border-radius:8px;cursor:pointer;min-width:0;">
+        <div onclick="filterByFunnel('notfollow')" data-funnel="notfollow" style="flex:1;text-align:center;padding:6px 2px;background:var(--bg);border-radius:8px;cursor:pointer;min-width:0;transition:all 0.2s;">
           <div style="font-size:16px;font-weight:800;color:var(--text-tertiary);">\${nfCount}</div>
           <div style="font-size:8px;color:var(--text-tertiary);margin-top:2px;">No follow</div>
         </div>
         <div style="flex:0;display:flex;align-items:center;color:var(--text-tertiary);font-size:9px;">→</div>
-        <div onclick="filterByFunnel('follow')" style="flex:1;text-align:center;padding:6px 2px;background:var(--bg);border-radius:8px;cursor:pointer;min-width:0;">
+        <div onclick="filterByFunnel('follow')" data-funnel="follow" style="flex:1;text-align:center;padding:6px 2px;background:var(--bg);border-radius:8px;cursor:pointer;min-width:0;transition:all 0.2s;">
           <div style="font-size:16px;font-weight:800;color:var(--red);">\${followOnly}</div>
           <div style="font-size:8px;color:var(--text-tertiary);margin-top:2px;">Follow</div>
         </div>
         <div style="flex:0;display:flex;align-items:center;color:var(--text-tertiary);font-size:9px;">→</div>
-        <div onclick="filterByFunnel('stuck')" style="flex:1;text-align:center;padding:6px 2px;background:var(--bg);border-radius:8px;cursor:pointer;min-width:0;">
+        <div onclick="filterByFunnel('stuck')" data-funnel="stuck" style="flex:1;text-align:center;padding:6px 2px;background:var(--bg);border-radius:8px;cursor:pointer;min-width:0;transition:all 0.2s;">
           <div style="font-size:16px;font-weight:800;color:var(--amber);">\${stuckCount}</div>
           <div style="font-size:8px;color:var(--text-tertiary);margin-top:2px;">Stuck</div>
         </div>
@@ -1539,17 +1544,17 @@ function renderTodaySummary(logs){
         <div style="flex:1;min-width:0;text-align:center;color:var(--text-tertiary);font-size:9px;">↓</div>
       </div>
       <div style="display:flex;gap:4px;flex-wrap:nowrap;">
-        <div onclick="filterByFunnel('booked')" style="flex:1;text-align:center;padding:6px 2px;background:var(--bg);border-radius:8px;cursor:pointer;min-width:0;">
+        <div onclick="filterByFunnel('booked')" data-funnel="booked" style="flex:1;text-align:center;padding:6px 2px;background:var(--bg);border-radius:8px;cursor:pointer;min-width:0;transition:all 0.2s;">
           <div style="font-size:16px;font-weight:800;color:#E879F9;">\${bookedCount}</div>
           <div style="font-size:8px;color:var(--text-tertiary);margin-top:2px;">Booked</div>
         </div>
         <div style="flex:0;display:flex;align-items:center;color:var(--text-tertiary);font-size:9px;">←</div>
-        <div onclick="filterByFunnel('consulted')" style="flex:1;text-align:center;padding:6px 2px;background:var(--bg);border-radius:8px;cursor:pointer;min-width:0;">
+        <div onclick="filterByFunnel('consulted')" data-funnel="consulted" style="flex:1;text-align:center;padding:6px 2px;background:var(--bg);border-radius:8px;cursor:pointer;min-width:0;transition:all 0.2s;">
           <div style="font-size:16px;font-weight:800;color:var(--green);">\${consultedCount}</div>
           <div style="font-size:8px;color:var(--text-tertiary);margin-top:2px;">Consulted</div>
         </div>
         <div style="flex:0;display:flex;align-items:center;color:var(--text-tertiary);font-size:9px;">←</div>
-        <div onclick="filterByFunnel('interest')" style="flex:1;text-align:center;padding:6px 2px;background:var(--bg);border-radius:8px;cursor:pointer;min-width:0;">
+        <div onclick="filterByFunnel('interest')" data-funnel="interest" style="flex:1;text-align:center;padding:6px 2px;background:var(--bg);border-radius:8px;cursor:pointer;min-width:0;transition:all 0.2s;">
           <div style="font-size:16px;font-weight:800;color:var(--cyan);">\${interestOnly}</div>
           <div style="font-size:8px;color:var(--text-tertiary);margin-top:2px;">Interest</div>
         </div>
@@ -1562,18 +1567,41 @@ let funnelFilter='',purposeFilter='';
 function filterByPurpose(type){
   if(purposeFilter===type){purposeFilter='';} else {purposeFilter=type;}
   funnelFilter='';
+  // 퍼널 효과 리셋
+  document.querySelectorAll('[data-funnel]').forEach(el=>{el.style.outline='none';el.style.transform='scale(1)';el.style.boxShadow='none';});
+  // Purpose 선택 효과
+  const pColors={skin:'rgba(61,214,140,0.15)',booking:'rgba(91,141,239,0.15)',business:'rgba(255,140,66,0.15)'};
+  document.querySelectorAll('[data-purpose]').forEach(el=>{
+    if(el.dataset.purpose===purposeFilter){
+      el.style.background=pColors[purposeFilter]||'transparent';
+      el.style.fontWeight='800';
+    }else{
+      el.style.background='transparent';
+      el.style.fontWeight='';
+    }
+  });
   applyFilters();
 }
 function filterByFunnel(type){
   purposeFilter='';
   if(funnelFilter===type){funnelFilter='';} else {funnelFilter=type;}
-  // 퍼널 항목 active 표시
-  document.querySelectorAll('.funnel-item').forEach(el=>el.style.outline='none');
-  if(funnelFilter){
-    const idx={follow:0,stuck:1,interest:2,consulted:3}[funnelFilter];
-    const items=document.querySelectorAll('.funnel-item');
-    if(items[idx]) items[idx].style.outline='2px solid var(--accent)';
-  }
+  // 퍼널 항목 선택 효과
+  // Purpose 효과 리셋
+  document.querySelectorAll('[data-purpose]').forEach(el=>{el.style.background='transparent';el.style.fontWeight='';});
+  const fColors={notfollow:['#8A94B0','rgba(138,148,176,0.3)'],follow:['#F06464','rgba(240,100,100,0.3)'],stuck:['#F0B24A','rgba(240,178,74,0.3)'],interest:['#4AC8E8','rgba(74,200,232,0.3)'],consulted:['#3DD68C','rgba(61,214,140,0.3)'],booked:['#E879F9','rgba(232,121,249,0.3)']};
+  document.querySelectorAll('[data-funnel]').forEach(el=>{
+    const fc=fColors[el.dataset.funnel];
+    if(el.dataset.funnel===funnelFilter&&fc){
+      el.style.outline='2px solid '+fc[0];
+      el.style.outlineOffset='-2px';
+      el.style.transform='scale(1.05)';
+      el.style.boxShadow='0 0 12px '+fc[1];
+    }else{
+      el.style.outline='none';
+      el.style.transform='scale(1)';
+      el.style.boxShadow='none';
+    }
+  });
   showUnreviewedOnly=false;
   document.getElementById('btnUnreviewed')?.classList.remove('active');
   applyFilters();
@@ -1715,9 +1743,10 @@ function renderLogs(){
     const isReviewed=l.reviewed;
     const isDirect=l.tag==='direct';
     const globalIdx=allLogs.findIndex(x=>x.createdAt===l.createdAt&&x.senderId===l.senderId);
-    return \`<div class="log-item \${noCountry?'log-no-country':''} \${isReviewed?'reviewed':'unreviewed'}" style="cursor:pointer;" onclick="if(!event.target.closest('button,.log-action-btn,.log-expand,input,textarea'))openPatient('\${esc(l.username)}','\${esc(l.senderId)}')">
+    return \`<div class="log-item \${noCountry?'log-no-country':''} \${isReviewed?'reviewed':'unreviewed'}" style="cursor:pointer;" onclick="if(!event.target.closest('button,.log-action-btn,.log-expand,input,textarea,.review-dot'))openPatient('\${esc(l.username)}','\${esc(l.senderId)}')">
       <div class="log-header">
         <div class="log-badges">
+          <span class="review-dot" onclick="event.stopPropagation();toggleReviewDot(\${globalIdx})" style="display:inline-flex;align-items:center;justify-content:center;width:12px;height:12px;border-radius:50%;background:\${isReviewed?'var(--border)':'var(--green)'};margin-right:6px;flex-shrink:0;cursor:pointer;transition:all 0.2s;vertical-align:middle;" title="\${isReviewed?'Mark unread':'Unread'}"></span>
           \${l.username?'<span class="badge badge-user">@'+esc(l.username)+'</span>':''}
         </div>
         <div class="log-time-relative">\${ago}</div>
@@ -1733,11 +1762,6 @@ function renderLogs(){
       </div>
       <div class="log-bubble log-bubble-in"><div class="log-bubble-label">Received</div><div>\${esc(l.received)}</div></div>
       <div class="log-bubble log-bubble-out"><div class="log-bubble-label">Replied</div><div class="log-bubble-text\${longReply?'':' expanded'}" id="\${id}">\${esc(l.replied)}</div>\${longReply?'<button class="log-expand" onclick="toggleLogExpand(\\''+id+'\\',this)">Show more</button>':''}</div>
-      <div class="log-actions">
-        <button class="log-action-btn \${isReviewed?'active':''}" onclick="toggleReview(\${globalIdx})">
-          \${isReviewed?'Reviewed':'Mark reviewed'}
-        </button>
-      </div>
     </div>\`;
   }).join('')+(tp>1?\`<div class="page-nav"><button class="page-btn" onclick="pl()" \${lp===0?'disabled':''}>Prev</button><span style="color:var(--text-tertiary);font-size:12px;font-weight:600">\${lp+1}/\${tp}</span><button class="page-btn" onclick="nl()" \${lp>=tp-1?'disabled':''}>Next</button></div>\`:'');
   }catch(e){console.error('renderLogs error:',e);el.innerHTML='<p class="empty">Error rendering logs.</p>';}
@@ -1770,6 +1794,17 @@ function nl(){if((lp+1)*LPP<filteredLogs.length){lp++;renderLogs();}}
 function esc(s){const d=document.createElement('div');d.textContent=s||'';return d.innerHTML;}
 
 // ── Review Toggle ──
+async function toggleReviewDot(idx){
+  if(!allLogs[idx])return;
+  const newState=!allLogs[idx].reviewed;
+  const username=allLogs[idx].username||allLogs[idx].senderId;
+  allLogs.forEach(l=>{if((l.username||l.senderId)===username)l.reviewed=newState;});
+  renderLogs();renderTodaySummary(allLogs);
+  // 서버 저장 (벌크 — 1회 요청)
+  try{
+    await fetch('/api/logs/review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,reviewed:newState})});
+  }catch(e){}
+}
 async function toggleReview(idx){
   if(!allLogs[idx])return;
   const newState=!allLogs[idx].reviewed;
@@ -1803,6 +1838,13 @@ async function sendDirectReply(senderId,inputId){
 let currentModalUser='',currentModalSenderId='';
 function openPatient(username,senderId){
   currentModalUser=username;currentModalSenderId=senderId;
+  // 자동 reviewed 처리 — 즉시 UI + 벌크 서버 저장
+  let hasUnread=false;
+  allLogs.forEach(l=>{if((l.username||l.senderId)===username&&!l.reviewed){l.reviewed=true;hasUnread=true;}});
+  if(hasUnread){
+    renderTodaySummary(allLogs);renderLogs();
+    fetch('/api/logs/review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,reviewed:true})});
+  }
   document.getElementById('modalTitle').textContent='@'+username;
   // Country
   const userLogs=allLogs.filter(l=>l.username===username);
@@ -1936,10 +1978,10 @@ function toggleTheme(){
 }
 // 저장된 테마 복원
 if(localStorage.getItem('drsean_theme')==='light'){document.documentElement.classList.add('light');document.getElementById('themeBtn').innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>';}
-function logout(){sessionStorage.clear();location.replace('/');}
+function logout(){localStorage.removeItem('drsean_user');localStorage.removeItem('drsean_name');location.replace('/');}
 
 // ── Session ──
-if(!sessionStorage.getItem('drsean_user'))location.replace('/');
+if(!localStorage.getItem('drsean_user'))location.replace('/');
 (async()=>{
   try{ await Promise.all([loadConfig(),loadStatus()]); }catch(e){ console.error('Init error:',e); }
   // 저장된 탭 복원

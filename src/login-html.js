@@ -85,7 +85,7 @@ export const LOGIN_HTML = `<!DOCTYPE html>
   </form>
 </div>
 <script>
-if(sessionStorage.getItem('drsean_user'))location.replace('/dashboard');
+if(localStorage.getItem('drsean_user'))location.replace('/dashboard');
 const U={sihyun:{pin:'0000',name:'Sihyun Kim'},minkyung:{pin:'0000',name:'Minkyung Jung'}};
 function doLogin(e){
   e.preventDefault();
@@ -93,7 +93,7 @@ function doLogin(e){
   if(!uid){err.textContent='Please select a user.';return false;}
   if(!pin){err.textContent='Please enter your PIN.';return false;}
   const u=U[uid];
-  if(u&&u.pin===pin){sessionStorage.setItem('drsean_user',uid);sessionStorage.setItem('drsean_name',u.name);location.replace('/dashboard');}
+  if(u&&u.pin===pin){localStorage.setItem('drsean_user',uid);localStorage.setItem('drsean_name',u.name);location.replace('/dashboard');}
   else{err.textContent='Incorrect PIN.';const p=document.getElementById('loginPin');p.value='';p.classList.add('input-error');p.addEventListener('input',()=>p.classList.remove('input-error'),{once:true});}
   return false;
 }
