@@ -3,6 +3,8 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
 <title>Dr.sean — Dashboard</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="apple-touch-icon" href="/icon.svg">
@@ -91,7 +93,7 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
 
   /* ── Content ── */
   .content { max-width:600px; margin:0 auto; padding:16px 16px calc(var(--nav-h) + 20px); }
-  .section { padding-bottom:10px; }
+  .section { padding-bottom:10px; max-width:520px; margin-left:auto; margin-right:auto; }
 
   /* ── Cards ── */
   .card {
@@ -441,20 +443,52 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
       <div><div style="font-size:15px;font-weight:700;">Analytics</div><div style="font-size:10px;color:var(--text-tertiary);">DM activity & patient breakdown</div></div>
     </div>
     <div id="analyticsError"></div>
+
+    <!-- ━━ OVERVIEW ━━ -->
+    <div style="font-size:9px;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;">Overview</div>
     <div class="stat-grid stat-grid-3">
       <div class="stat-card"><div class="stat-label">Total DMs</div><div class="stat-value" id="statDMs">-</div></div>
+      <div class="stat-card"><div class="stat-label">Unique Users</div><div class="stat-value" id="statUniqueUsers">-</div></div>
+      <div class="stat-card"><div class="stat-label">AI Handled</div><div class="stat-value" id="statAiRatio">-</div></div>
+    </div>
+    <div class="stat-grid stat-grid-3">
       <div class="stat-card"><div class="stat-label">Top Country</div><div class="stat-value" id="statTopCountry" style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">-</div></div>
       <div class="stat-card"><div class="stat-label">Top Concern</div><div class="stat-value" id="statTopTag" style="font-size:12px;">-</div></div>
+      <div class="stat-card"><div class="stat-label">Peak Time</div><div class="stat-value" id="statPeakTime" style="font-size:14px;">-</div></div>
     </div>
 
+    <!-- Weekly Growth (inline) -->
+    <div class="chart-card">
+      <div class="card-header">This Week</div>
+      <div id="weeklyGrowth" style="padding:4px 0;"></div>
+    </div>
+
+    <!-- ━━ ACTIVITY ━━ -->
+    <div style="font-size:9px;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:1px;margin:18px 0 8px;">Activity</div>
     <div class="chart-card">
       <div class="card-header">DM Activity — Last 7 Days</div>
       <div class="chart-wrap"><canvas id="chartActivity"></canvas></div>
     </div>
-
     <div class="chart-card">
-      <div class="card-header">DM Breakdown</div>
-      <div style="display:flex;gap:6px;margin:8px 0;" id="anaToggle">
+      <div class="card-header">Peak Hours (KST)</div>
+      <div class="chart-wrap"><canvas id="chartHourly"></canvas></div>
+    </div>
+
+    <!-- ━━ FUNNEL ━━ -->
+    <div style="font-size:9px;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:1px;margin:18px 0 8px;">Patient Journey</div>
+    <div class="chart-card">
+      <div class="card-header">Funnel Conversion</div>
+      <div id="funnelConversion" style="padding:4px 0;"></div>
+    </div>
+    <div class="chart-card">
+      <div class="card-header">Drop-off Points</div>
+      <div id="dropoffAnalysis" style="padding:4px 0;"></div>
+    </div>
+
+    <!-- ━━ BREAKDOWN ━━ -->
+    <div style="font-size:9px;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:1px;margin:18px 0 8px;">Breakdown</div>
+    <div class="chart-card">
+      <div style="display:flex;gap:6px;margin-bottom:8px;" id="anaToggle">
         <button onclick="anaSwitch(0)" style="flex:1;padding:6px;border:none;border-radius:6px;font-size:10px;font-weight:700;font-family:Inter,sans-serif;cursor:pointer;background:var(--accent);color:#fff;">Country</button>
         <button onclick="anaSwitch(1)" style="flex:1;padding:6px;border:none;border-radius:6px;font-size:10px;font-weight:700;font-family:Inter,sans-serif;cursor:pointer;background:var(--bg);color:var(--text-tertiary);">Concerns</button>
         <button onclick="anaSwitch(2)" style="flex:1;padding:6px;border:none;border-radius:6px;font-size:10px;font-weight:700;font-family:Inter,sans-serif;cursor:pointer;background:var(--bg);color:var(--text-tertiary);">By Country</button>
@@ -462,6 +496,10 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
       <div id="anaChartWrap0" class="chart-wrap"><canvas id="chartCountry"></canvas></div>
       <div id="anaChartWrap1" class="chart-wrap" style="display:none;"><canvas id="chartTags"></canvas></div>
       <div id="anaChartWrap2" class="chart-wrap chart-wrap-lg" style="display:none;"><canvas id="chartCountryConcerns"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="card-header">Country Conversion Rate</div>
+      <div id="countryConversion" style="padding:4px 0;"></div>
     </div>
   </div>
 
@@ -878,11 +916,10 @@ async function loadHome(){
   const engRate=ig.followers>0?((ig.totalLikes+ig.totalComments)/(ig.followers*pc)*100).toFixed(1):'0';
   document.getElementById('statEngRate').textContent=engRate+'%';
 
-  // Quick Actions + Bot Performance — DM counts
+  // Bot Performance
   try{
-    const lr=await fetch('/api/logs');const logs=await lr.json();
-    if(Array.isArray(logs)){
-      // Bot Performance card
+    const lr=await fetch('/api/logs');const bpLogs=await lr.json();
+    if(Array.isArray(bpLogs)){
       const bp=document.getElementById('botPerformance');
       if(bp && config.botStartDate){
         const startDate=new Date(config.botStartDate);
@@ -890,55 +927,35 @@ async function loadHome(){
         const startFollowers=config.botStartFollowers||0;
         const followerGrowth=ig.followers-startFollowers;
         const followerPct=startFollowers>0?((followerGrowth/startFollowers)*100).toFixed(1):'-';
-        // 미팔로우 사용자 제외한 환자 수
-        const nfCheck={};logs.forEach(l=>{const k=l.username||'';if(!k)return;if(!(k in nfCheck))nfCheck[k]=true;if(!(l.replied||'').includes('[Follow request - not following]'))nfCheck[k]=false;});
-        const uniqueUsers=new Set(logs.map(l=>l.username).filter(k=>k&&!nfCheck[k])).size;
-        const countries=new Set(logs.map(l=>cleanC(l.country)).filter(Boolean)).size;
-        const consulted=logs.filter(l=>l.tag&&l.tag!=='stuck'&&l.tag!=='paused'&&l.tag!=='direct').length;
-        const convRate=logs.length>0?Math.round(consulted/logs.length*100):0;
-
+        const nfC={};bpLogs.forEach(l=>{const k=l.username||'';if(!k)return;if(!(k in nfC))nfC[k]=true;if(!(l.replied||'').includes('[Follow request'))nfC[k]=false;});
+        const bpUsers=new Set(bpLogs.map(l=>l.username).filter(k=>k&&!nfC[k])).size;
+        const bpCountries=new Set(bpLogs.map(l=>cleanC(l.country)).filter(Boolean)).size;
+        const consulted=bpLogs.filter(l=>l.tag&&!SKIP_TAGS.has(l.tag)).length;
+        const bpConv=bpLogs.length>0?Math.round(consulted/bpLogs.length*100):0;
+        const uf={},ul2={};bpLogs.forEach(l=>{const k=l.username||'';if(!k||!l.createdAt)return;const t=new Date(l.createdAt).getTime();if(!uf[k]||t<uf[k])uf[k]=t;if(!ul2[k]||t>ul2[k])ul2[k]=t;});
+        const retTotal=Object.keys(uf).length;const returning=Object.keys(uf).filter(k=>ul2[k]-uf[k]>86400000).length;const retRate=retTotal>0?Math.round(returning/retTotal*100):0;
+        const bookingIntent=new Set(bpLogs.filter(l=>l.tag==='booking').map(l=>l.username||l.senderId)).size;
         bp.innerHTML=\`<div class="card" style="background:linear-gradient(135deg,var(--surface),var(--surface-2));margin-bottom:12px;">
-          <div class="card-header" style="display:flex;align-items:center;gap:6px;">
+          <div onclick="var b=this.nextElementSibling;var a=this.querySelector('.bp-arrow');if(b.style.display==='none'){b.style.display='';a.style.transform='rotate(90deg)';}else{b.style.display='none';a.style.transform='rotate(0)';}" class="card-header" style="display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-            Bot Performance — \${daysActive} days active
+            <span style="flex:1;">Bot Performance — \${daysActive} days active</span>
+            <span class="bp-arrow" style="font-size:14px;color:var(--text-tertiary);transition:transform 0.2s;transform:rotate(0);">›</span>
           </div>
-          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
-            <div style="padding:8px;background:var(--bg);border-radius:8px;overflow:hidden;">
-              <div style="font-size:9px;color:var(--text-tertiary);font-weight:600;text-transform:uppercase;white-space:nowrap;">Followers</div>
-              <div style="font-size:18px;font-weight:800;margin-top:3px;color:\${followerGrowth>=0?'var(--green)':'var(--red)'};">\${followerGrowth>=0?'+':''}\${fmt(followerGrowth)}</div>
-              <div style="font-size:9px;color:var(--text-tertiary);">\${followerPct}%</div>
+          <div style="display:none;">
+            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
+              <div style="padding:8px;background:var(--bg);border-radius:8px;"><div style="font-size:9px;color:var(--text-tertiary);font-weight:600;text-transform:uppercase;">Followers</div><div style="font-size:18px;font-weight:800;margin-top:3px;color:\${followerGrowth>=0?'var(--green)':'var(--red)'};">\${followerGrowth>=0?'+':''}\${fmt(followerGrowth)}</div><div style="font-size:9px;color:var(--text-tertiary);">\${followerPct}%</div></div>
+              <div style="padding:8px;background:var(--bg);border-radius:8px;"><div style="font-size:9px;color:var(--text-tertiary);font-weight:600;text-transform:uppercase;">Replied</div><div style="font-size:18px;font-weight:800;margin-top:3px;color:var(--accent);">\${bpLogs.length}</div><div style="font-size:9px;color:var(--text-tertiary);">\${(bpLogs.length/daysActive).toFixed(1)}/day</div></div>
+              <div style="padding:8px;background:var(--bg);border-radius:8px;"><div style="font-size:9px;color:var(--text-tertiary);font-weight:600;text-transform:uppercase;">Consulted</div><div style="font-size:18px;font-weight:800;margin-top:3px;color:var(--green);">\${consulted}</div><div style="font-size:9px;color:var(--text-tertiary);">\${bpConv}% conv.</div></div>
+              <div style="padding:8px;background:var(--bg);border-radius:8px;"><div style="font-size:9px;color:var(--text-tertiary);font-weight:600;text-transform:uppercase;">Patients</div><div style="font-size:18px;font-weight:800;margin-top:3px;">\${bpUsers}</div><div style="font-size:9px;color:var(--text-tertiary);">\${bpCountries} countries</div></div>
+              <div style="padding:8px;background:var(--bg);border-radius:8px;"><div style="font-size:9px;color:var(--text-tertiary);font-weight:600;text-transform:uppercase;">Time Saved</div><div style="font-size:18px;font-weight:800;margin-top:3px;color:var(--cyan);">\${bpLogs.length>=60?Math.round(bpLogs.length/60)+'h':bpLogs.length+'m'}</div><div style="font-size:9px;color:var(--text-tertiary);">~1 min/reply</div></div>
+              <div style="padding:8px;background:var(--bg);border-radius:8px;"><div style="font-size:9px;color:var(--text-tertiary);font-weight:600;text-transform:uppercase;">Return Rate</div><div style="font-size:18px;font-weight:800;margin-top:3px;color:var(--cyan);">\${retRate}%</div><div style="font-size:9px;color:var(--text-tertiary);">\${returning}/\${retTotal} returned</div></div>
             </div>
-            <div style="padding:8px;background:var(--bg);border-radius:8px;overflow:hidden;">
-              <div style="font-size:9px;color:var(--text-tertiary);font-weight:600;text-transform:uppercase;white-space:nowrap;">Replied</div>
-              <div style="font-size:18px;font-weight:800;margin-top:3px;color:var(--accent);">\${logs.length}</div>
-              <div style="font-size:9px;color:var(--text-tertiary);">\${(logs.length/daysActive).toFixed(1)}/day</div>
-            </div>
-            <div style="padding:8px;background:var(--bg);border-radius:8px;overflow:hidden;">
-              <div style="font-size:9px;color:var(--text-tertiary);font-weight:600;text-transform:uppercase;white-space:nowrap;">Consulted</div>
-              <div style="font-size:18px;font-weight:800;margin-top:3px;color:var(--green);">\${consulted}</div>
-              <div style="font-size:9px;color:var(--text-tertiary);">\${convRate}% conv.</div>
-            </div>
-            <div style="padding:8px;background:var(--bg);border-radius:8px;overflow:hidden;">
-              <div style="font-size:9px;color:var(--text-tertiary);font-weight:600;text-transform:uppercase;white-space:nowrap;">Patients</div>
-              <div style="font-size:18px;font-weight:800;margin-top:3px;">\${uniqueUsers}</div>
-              <div style="font-size:9px;color:var(--text-tertiary);">\${countries} countries</div>
-            </div>
-            <div style="padding:8px;background:var(--bg);border-radius:8px;overflow:hidden;">
-              <div style="font-size:9px;color:var(--text-tertiary);font-weight:600;text-transform:uppercase;white-space:nowrap;">Time Saved</div>
-              <div style="font-size:18px;font-weight:800;margin-top:3px;color:var(--cyan);">\${logs.length>=60?Math.round(logs.length/60)+'h':logs.length+'m'}</div>
-              <div style="font-size:9px;color:var(--text-tertiary);">~1 min/reply</div>
-            </div>
-            <div style="padding:8px;background:var(--bg);border-radius:8px;overflow:hidden;">
-              <div style="font-size:9px;color:var(--text-tertiary);font-weight:600;text-transform:uppercase;white-space:nowrap;">Return Rate</div>
-              \${(()=>{const uf={},ul={};logs.forEach(l=>{const k=l.username||'';if(!k||!l.createdAt)return;const t=new Date(l.createdAt).getTime();if(!uf[k]||t<uf[k])uf[k]=t;if(!ul[k]||t>ul[k])ul[k]=t;});const total=Object.keys(uf).length;const returning=Object.keys(uf).filter(k=>ul[k]-uf[k]>86400000).length;const rate=total>0?Math.round(returning/total*100):0;return'<div style="font-size:18px;font-weight:800;margin-top:3px;color:var(--cyan);">'+rate+'%</div><div style="font-size:9px;color:var(--text-tertiary);">'+returning+'/'+total+' returned';})()}
+            <div style="margin-top:8px;padding:10px 12px;background:var(--bg);border-radius:8px;display:flex;align-items:center;justify-content:space-between;">
+              <div><span style="font-size:11px;color:var(--text-secondary);font-weight:600;">Booking Intent</span><div style="font-size:9px;color:var(--text-tertiary);margin-top:2px;">Patients who selected "Booking Inquiry"</div></div>
+              <span style="font-size:22px;font-weight:800;color:#5B8DEF;">\${bookingIntent}</span>
             </div>
           </div>
         </div>\`;
-        // Booking Intent — Bot Performance 카드 안, grid 밖 (전체 너비)
-        bp.querySelector('.card').insertAdjacentHTML('beforeend',\`<div style="margin-top:8px;padding:10px 12px;background:var(--bg);border-radius:8px;display:flex;align-items:center;justify-content:space-between;">
-          <div><span style="font-size:11px;color:var(--text-secondary);font-weight:600;">Booking Intent</span><div style="font-size:9px;color:var(--text-tertiary);margin-top:2px;">Patients who selected "Booking Inquiry"</div></div>
-          <span style="font-size:22px;font-weight:800;color:#5B8DEF;">\${new Set(logs.filter(l=>l.tag==='booking').map(l=>l.username||l.senderId)).size}</span>
-        </div>\`);
       }
     }
   }catch(e){}
@@ -980,14 +997,36 @@ async function loadAnalytics(){
   }
   document.getElementById('statDMs').textContent=logs.length;
 
-  // 사용자 기준 집계 (사용자당 첫 concern + 국가)
+  // ── 사용자 기준 집계 ──
   const userFirst={};
+  const userLogs={};  // 사용자별 전체 로그
+  const umNF={};  // 미팔로우 사용자
   logs.forEach(l=>{
     const k=l.username||l.senderId||'';if(!k)return;
     if(!userFirst[k])userFirst[k]={country:'',concern:'',raw:''};
+    if(!userLogs[k])userLogs[k]=[];
+    userLogs[k].push(l);
     if(!userFirst[k].country&&cleanC(l.country)){userFirst[k].country=cleanC(l.country);userFirst[k].raw=l.country;}
     if(!userFirst[k].concern&&l.tag&&!SKIP_TAGS.has(l.tag))userFirst[k].concern=l.tag;
+    if((l.replied||'').includes('Follow request'))umNF[k]=true;
   });
+
+  const uniqueUsers=Object.keys(userFirst).length;
+  document.getElementById('statUniqueUsers').textContent=uniqueUsers;
+
+  // 평균 대화 턴 수 (미팔로우 제외)
+  // Peak Time (KST)
+  const peakHourRaw=new Array(24).fill(0);
+  logs.forEach(l=>{const d=new Date(l.createdAt||l.timestamp);if(!isNaN(d))peakHourRaw[(d.getUTCHours()+9)%24]++;});
+  const peakIdx=peakHourRaw.indexOf(Math.max(...peakHourRaw));
+  document.getElementById('statPeakTime').textContent=peakHourRaw[peakIdx]>0?((peakIdx%12||12)+(peakIdx<12?'AM':'PM')+' KST'):'-';
+
+  // AI vs Manual 비율
+  const aiCount=logs.filter(l=>l.tag!=='direct'&&!(l.replied||'').startsWith('[')).length;
+  const aiPct=logs.length?Math.round(aiCount/logs.length*100):0;
+  document.getElementById('statAiRatio').textContent=aiPct+'%';
+
+  // 국가/태그 집계
   const countries={},tags={},ct={},countryRaw={};
   Object.values(userFirst).forEach(u=>{
     const c=u.country;
@@ -999,27 +1038,166 @@ async function loadAnalytics(){
   document.getElementById('statTopCountry').textContent=tc?shortC(countryRaw[tc[0]]||tc[0]):'-';
   document.getElementById('statTopTag').textContent=tt?tt[0]:'-';
 
-  const cl=chartColor(),cg=chartGrid();
-  const dOpts={responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:cl,font:{size:10,family:'Inter'},padding:8,usePointStyle:true,pointStyleWidth:7}}}};
+  // ── Funnel Conversion ──
+  const funnelCounts={follow:0,stuck:0,interest:0,consulted:0};
+  Object.entries(userFirst).forEach(([k,u])=>{
+    if(umNF[k])return;
+    const uL=userLogs[k]||[];
+    const country=uL.find(x=>cleanC(x.country))?.country||'';
+    const stage=getUserStage(uL,country);
+    funnelCounts[stage]=(funnelCounts[stage]||0)+1;
+  });
+  const totalFollowers=Object.keys(userFirst).filter(k=>!umNF[k]).length;
+  const funnelEl=document.getElementById('funnelConversion');
+  if(funnelEl&&totalFollowers>0){
+    const stages=[
+      {key:'follow',label:'Follow',color:'var(--red)',count:funnelCounts.follow},
+      {key:'stuck',label:'Stuck',color:'var(--amber)',count:funnelCounts.stuck},
+      {key:'interest',label:'Interest',color:'var(--cyan)',count:funnelCounts.interest},
+      {key:'consulted',label:'Consulted',color:'var(--green)',count:funnelCounts.consulted},
+    ];
+    const cumulative=[totalFollowers,totalFollowers-funnelCounts.follow,totalFollowers-funnelCounts.follow-funnelCounts.stuck,funnelCounts.consulted];
+    funnelEl.innerHTML=stages.map((s,i)=>{
+      const pct=Math.round(s.count/totalFollowers*100);
+      const convPct=i>0?Math.round(cumulative[i]/totalFollowers*100):100;
+      return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;'+(i<3?'border-bottom:1px solid var(--border);':'')+'">'+
+        '<div style="width:70px;font-size:10px;font-weight:700;color:'+s.color+';">'+s.label+'</div>'+
+        '<div style="flex:1;height:22px;background:var(--bg);border-radius:6px;overflow:hidden;position:relative;">'+
+          '<div style="height:100%;width:'+pct+'%;background:'+s.color+';opacity:0.7;border-radius:6px;transition:width 0.5s;"></div>'+
+          '<span style="position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:10px;font-weight:700;color:var(--text-secondary);">'+s.count+'</span>'+
+        '</div>'+
+        '<div style="width:40px;text-align:right;font-size:11px;font-weight:800;color:'+s.color+';">'+pct+'%</div>'+
+      '</div>';
+    }).join('')+
+    '<div style="text-align:center;margin-top:8px;font-size:10px;color:var(--text-tertiary);">Follow → Consulted conversion: <span style="font-weight:800;color:var(--green);">'+Math.round(funnelCounts.consulted/totalFollowers*100)+'%</span></div>';
+  }
 
-  // Activity
+  // ── Weekly Growth ──
+  const now=new Date();
+  const thisWeekStart=new Date(now);thisWeekStart.setDate(now.getDate()-now.getDay());thisWeekStart.setHours(0,0,0,0);
+  const lastWeekStart=new Date(thisWeekStart);lastWeekStart.setDate(lastWeekStart.getDate()-7);
+  const thisWeekLogs=logs.filter(l=>{const d=new Date(l.createdAt||l.timestamp);return d>=thisWeekStart;});
+  const lastWeekLogs=logs.filter(l=>{const d=new Date(l.createdAt||l.timestamp);return d>=lastWeekStart&&d<thisWeekStart;});
+  const thisWeekUsers=new Set(thisWeekLogs.map(l=>l.username||l.senderId).filter(Boolean));
+  const lastWeekUsers=new Set(lastWeekLogs.map(l=>l.username||l.senderId).filter(Boolean));
+  const newUsersThisWeek=[...thisWeekUsers].filter(u=>!lastWeekLogs.some(l=>(l.username||l.senderId)===u)).length;
+  const growthEl=document.getElementById('weeklyGrowth');
+  if(growthEl){
+    const dmChange=lastWeekLogs.length?Math.round((thisWeekLogs.length-lastWeekLogs.length)/lastWeekLogs.length*100):thisWeekLogs.length>0?100:0;
+    const userChange=lastWeekUsers.size?Math.round((thisWeekUsers.size-lastWeekUsers.size)/lastWeekUsers.size*100):thisWeekUsers.size>0?100:0;
+    const arrow=(v)=>v>0?'<span style="color:var(--green);">▲ +'+v+'%</span>':v<0?'<span style="color:var(--red);">▼ '+v+'%</span>':'<span style="color:var(--text-tertiary);">— 0%</span>';
+    growthEl.innerHTML='<div style="display:flex;justify-content:space-around;">'+
+      '<div style="text-align:center;padding:6px 0;"><div style="font-size:18px;font-weight:800;color:var(--text);">'+thisWeekLogs.length+'</div><div style="font-size:8px;color:var(--text-tertiary);margin-top:1px;">DMs</div><div style="font-size:9px;margin-top:2px;">'+arrow(dmChange)+'</div></div>'+
+      '<div style="text-align:center;padding:6px 0;"><div style="font-size:18px;font-weight:800;color:var(--text);">'+thisWeekUsers.size+'</div><div style="font-size:8px;color:var(--text-tertiary);margin-top:1px;">Users</div><div style="font-size:9px;margin-top:2px;">'+arrow(userChange)+'</div></div>'+
+      '<div style="text-align:center;padding:6px 0;"><div style="font-size:18px;font-weight:800;color:var(--green);">'+newUsersThisWeek+'</div><div style="font-size:8px;color:var(--text-tertiary);margin-top:1px;">New</div><div style="font-size:9px;margin-top:2px;color:var(--text-tertiary);">first time</div></div>'+
+    '</div>';
+  }
+
+  // ── Hourly Heatmap (3h blocks) ──
+  const hourRaw=new Array(24).fill(0);
+  logs.forEach(l=>{
+    const d=new Date(l.createdAt||l.timestamp);
+    if(!isNaN(d))hourRaw[(d.getUTCHours()+9)%24]++;
+  });
+  const hourBlocks=[0,3,6,9,12,15,18,21].map(s=>hourRaw[s]+hourRaw[s+1]+hourRaw[s+2]);
+  const hourBlockLabels=['0-2','3-5','6-8','9-11','12-14','15-17','18-20','21-23'];
+  const maxHour=Math.max(...hourBlocks);
+  const hourBarOpts=cOpts();hourBarOpts.plugins.legend={display:false};
+  hourBarOpts.plugins.tooltip={...hourBarOpts.plugins.tooltip,callbacks:{label:ctx=>ctx.raw+' DMs'}};
+  new Chart(document.getElementById('chartHourly'),{type:'bar',data:{labels:hourBlockLabels,datasets:[{data:hourBlocks,backgroundColor:hourBlocks.map(v=>{const r=maxHour?v/maxHour:0;return r>0.7?'rgba(91,141,239,0.9)':r>0.3?'rgba(91,141,239,0.5)':'rgba(91,141,239,0.2)';}),hoverBackgroundColor:'#5B8DEF',borderRadius:8,barPercentage:0.5,borderSkipped:false}]},options:hourBarOpts});
+
+  // ── Drop-off Analysis ──
+  const dropoffEl=document.getElementById('dropoffAnalysis');
+  if(dropoffEl&&totalFollowers>0){
+    // 사용자별 마지막 활동 기준 drop-off 판단 (7일 이상 비활동 = drop-off)
+    const dropStages={greeting:0,country:0,purpose:0,concern:0,consultation:0};
+    Object.entries(userFirst).forEach(([k,u])=>{
+      if(umNF[k])return;
+      const uL=userLogs[k]||[];
+      const lastLog=uL[0];  // logs are newest-first
+      const daysSinceLast=lastLog?(now-new Date(lastLog.createdAt||lastLog.timestamp))/(1000*60*60*24):999;
+      if(daysSinceLast<3)return;  // still active, not dropped off
+      const country=uL.find(x=>cleanC(x.country))?.country||'';
+      const hasConcern=uL.some(l=>l.tag&&!SKIP_TAGS.has(l.tag));
+      const hasPurpose=uL.some(l=>['business','booking'].includes(l.tag))||hasConcern;
+      if(hasConcern)dropStages.consultation++;
+      else if(hasPurpose)dropStages.concern++;
+      else if(country)dropStages.purpose++;
+      else if(uL.length>1)dropStages.country++;
+      else dropStages.greeting++;
+    });
+    const dropTotal=Object.values(dropStages).reduce((s,v)=>s+v,0);
+    const dropItems=[
+      {label:'After Greeting',count:dropStages.greeting,color:'var(--red)'},
+      {label:'At Country',count:dropStages.country,color:'var(--amber)'},
+      {label:'At Purpose',count:dropStages.purpose,color:'var(--amber)'},
+      {label:'At Concern',count:dropStages.concern,color:'var(--cyan)'},
+      {label:'After Consult',count:dropStages.consultation,color:'var(--green)'},
+    ];
+    if(dropTotal>0){
+      dropoffEl.innerHTML=dropItems.filter(d=>d.count>0).map(d=>{
+        const pct=Math.round(d.count/dropTotal*100);
+        return '<div style="display:flex;align-items:center;gap:10px;padding:6px 0;">'+
+          '<div style="width:90px;font-size:10px;font-weight:600;color:'+d.color+';">'+d.label+'</div>'+
+          '<div style="flex:1;height:16px;background:var(--bg);border-radius:4px;overflow:hidden;">'+
+            '<div style="height:100%;width:'+pct+'%;background:'+d.color+';opacity:0.6;border-radius:4px;"></div>'+
+          '</div>'+
+          '<div style="width:50px;text-align:right;font-size:10px;color:var(--text-secondary);font-weight:700;">'+d.count+' ('+pct+'%)</div>'+
+        '</div>';
+      }).join('');
+    } else { dropoffEl.closest('.chart-card').style.display='none'; }
+  }
+
+  // ── Country Conversion Rate ──
+  const countryConvEl=document.getElementById('countryConversion');
+  if(countryConvEl){
+    const countryStages={};
+    Object.entries(userFirst).forEach(([k,u])=>{
+      if(umNF[k]||!u.country)return;
+      const c=u.country;
+      if(!countryStages[c])countryStages[c]={total:0,consulted:0,raw:u.raw};
+      countryStages[c].total++;
+      const uL=userLogs[k]||[];
+      const country=uL.find(x=>cleanC(x.country))?.country||'';
+      if(getUserStage(uL,country)==='consulted')countryStages[c].consulted++;
+    });
+    const sorted=Object.entries(countryStages).sort((a,b)=>b[1].total-a[1].total).slice(0,8);
+    countryConvEl.innerHTML=sorted.length?
+      sorted.map(([c,d])=>{
+        const pct=d.total?Math.round(d.consulted/d.total*100):0;
+        return '<div style="display:flex;align-items:center;gap:10px;padding:6px 0;">'+
+          '<div style="width:80px;font-size:10px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+shortC(d.raw||c)+'</div>'+
+          '<div style="flex:1;height:16px;background:var(--bg);border-radius:4px;overflow:hidden;">'+
+            '<div style="height:100%;width:'+pct+'%;background:var(--green);opacity:0.6;border-radius:4px;min-width:'+(pct>0?'4px':'0')+';"></div>'+
+          '</div>'+
+          '<div style="width:60px;text-align:right;font-size:10px;font-weight:700;"><span style="color:var(--green);">'+pct+'%</span> <span style="color:var(--text-tertiary);">('+d.consulted+'/'+d.total+')</span></div>'+
+        '</div>';
+      }).join(''):
+      (()=>{countryConvEl.closest('.chart-card').style.display='none';return'';})();
+  }
+
+  // ── Charts ──
+  const cl=chartColor(),cg=chartGrid();
+
+  // Activity — Last 7 Days
   const days=[];for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);days.push(d.toISOString().split('T')[0]);}
   new Chart(document.getElementById('chartActivity'),{type:'line',data:{labels:days.map(d=>d.slice(5)),datasets:[{label:'DMs',data:days.map(d=>logs.filter(l=>(l.createdAt||'').startsWith(d)).length),borderColor:'#5B8DEF',backgroundColor:'rgba(91,141,239,0.06)',fill:true,tension:0.4,pointRadius:5,pointBackgroundColor:'#5B8DEF',pointBorderColor:'#fff',pointBorderWidth:2,pointHoverRadius:7,borderWidth:2.5}]},options:cOpts()});
 
-  // Country — 바 차트
+  // Country bar
   const anaBarOpts=cOpts();anaBarOpts.plugins.legend={display:false};anaBarOpts.animation={duration:300,easing:'easeOutQuart'};
   if(Object.keys(countries).length){const s=Object.entries(countries).sort((a,b)=>b[1]-a[1]).slice(0,8);new Chart(document.getElementById('chartCountry'),{type:'bar',data:{labels:s.map(x=>shortC(countryRaw[x[0]]||x[0])),datasets:[{data:s.map(x=>x[1]),backgroundColor:'rgba(91,141,239,0.7)',hoverBackgroundColor:'#5B8DEF',borderRadius:20,barPercentage:0.4,borderSkipped:false}]},options:anaBarOpts});}
 
-  // Tags — 바 차트
+  // Tags bar
   if(Object.keys(tags).length){const s=Object.entries(tags).sort((a,b)=>b[1]-a[1]).slice(0,8);new Chart(document.getElementById('chartTags'),{type:'bar',data:{labels:s.map(x=>x[0]),datasets:[{data:s.map(x=>x[1]),backgroundColor:'rgba(61,214,140,0.7)',hoverBackgroundColor:'#3DD68C',borderRadius:20,barPercentage:0.4,borderSkipped:false}]},options:anaBarOpts});}
 
-  // Country Concerns — 스택 바 차트 (범례 표시)
+  // Country Concerns stacked bar
   if(Object.keys(ct).length){
     const ccl=Object.keys(ct).sort((a,b)=>Object.values(ct[b]).reduce((s,v)=>s+v,0)-Object.values(ct[a]).reduce((s,v)=>s+v,0)).slice(0,8);
     const at=[...new Set(ccl.flatMap(c=>Object.keys(ct[c])))];
     const stackOpts=cOpts();stackOpts.scales.x.stacked=true;stackOpts.scales.y={display:false,stacked:true,beginAtZero:true};stackOpts.plugins.legend={labels:{color:chartColor(),font:{size:9,family:'Inter'},usePointStyle:true,pointStyleWidth:6,padding:6}};
     new Chart(document.getElementById('chartCountryConcerns'),{type:'bar',data:{labels:ccl.map(c=>shortC(countryRaw[c]||c)),datasets:at.map((t,i)=>({label:t,data:ccl.map(c=>ct[c][t]||0),backgroundColor:CC[i%CC.length]+'B3',hoverBackgroundColor:CC[i%CC.length],borderRadius:4,borderSkipped:false}))},options:stackOpts});
   }
+
 }
 
 const ANA_COLORS=['var(--accent)','var(--green)','var(--amber)'];
@@ -1231,11 +1409,6 @@ async function loadInsights(){
       if(u.concern)concerns[u.concern]=(concerns[u.concern]||0)+1;
       if(u.country){countries[u.country]=(countries[u.country]||0)+1;if(!countryRawMap[u.country])countryRawMap[u.country]=u.raw;}
     });
-    const topConcerns=Object.entries(concerns).sort((a,b)=>b[1]-a[1]).slice(0,5);
-    const topCountries=Object.entries(countries).sort((a,b)=>b[1]-a[1]).slice(0,5);
-    const maxConcern=topConcerns[0]?topConcerns[0][1]:1;
-    const maxCountry=topCountries[0]?topCountries[0][1]:1;
-
     // 퍼널 계산
     const stages={follow:0,stuck:0,interest:0,consulted:0};
     const userLogsMap={};
@@ -1255,35 +1428,11 @@ async function loadInsights(){
     activeLogs.forEach(l=>{if(l.createdAt){const h=(new Date(l.createdAt).getUTCHours()+9)%24;hours[h]++;}});
     const maxHour=Math.max(...hours)||1;
     const peakH=hours.indexOf(Math.max(...hours));
-    const peakStr=(peakH%12||12)+(peakH<12?'AM':'PM');
-
-    // 바 색상
-    const CC=['#5B8DEF','#3DD68C','#F0B24A','#E879F9','#48C8E8','#FF6B6B','#A984FF','#6AAE8E'];
 
     // ── 카드 생성 ──
     let html='';
 
-    // 1. Hero — 핵심 수치 4개
-    html+=\`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px;">
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 8px;text-align:center;">
-        <div style="font-size:22px;font-weight:800;color:var(--text);">\${users.size}</div>
-        <div style="font-size:8px;color:var(--text-tertiary);font-weight:600;margin-top:2px;">PATIENTS</div>
-      </div>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 8px;text-align:center;">
-        <div style="font-size:22px;font-weight:800;color:var(--green);">\${convRate}%</div>
-        <div style="font-size:8px;color:var(--text-tertiary);font-weight:600;margin-top:2px;">CONSULTED</div>
-      </div>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 8px;text-align:center;">
-        <div style="font-size:22px;font-weight:800;color:#E879F9;">\${bookedCount}</div>
-        <div style="font-size:8px;color:var(--text-tertiary);font-weight:600;margin-top:2px;">BOOKED</div>
-      </div>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 8px;text-align:center;">
-        <div style="font-size:22px;font-weight:800;color:var(--accent);">\${peakStr}</div>
-        <div style="font-size:8px;color:var(--text-tertiary);font-weight:600;margin-top:2px;">PEAK TIME</div>
-      </div>
-    </div>\`;
-
-    // 2. AI Summary
+    // 1. AI Summary
     const summaryParts=[];
     summaryParts.push('You have <b>'+users.size+' active patients</b> across <b>'+Object.keys(countries).length+' countries</b>.');
     if(convRate>=50)summaryParts.push('<span style="color:var(--green);">Strong conversion rate at '+convRate+'%.</span>');
@@ -1291,6 +1440,8 @@ async function loadInsights(){
     else summaryParts.push('<span style="color:var(--amber);">Conversion rate is '+convRate+'% — focus on engaging Interest patients.</span>');
     if(stages.stuck>0)summaryParts.push('<span style="color:var(--amber);">'+stages.stuck+' patient'+(stages.stuck>1?'s are':' is')+' stuck in onboarding.</span> Reach out directly via DM.');
     if(bookedCount>0)summaryParts.push('<span style="color:#E879F9;">'+bookedCount+' booking'+(bookedCount>1?'s':'')+ ' confirmed!</span>');
+    const peakStr=(peakH%12||12)+(peakH<12?'AM':'PM');
+    summaryParts.push('Peak DM time is <b>'+peakStr+' KST</b>.');
     html+=\`<div style="background:linear-gradient(135deg,rgba(169,132,255,0.08),rgba(91,141,239,0.06));border:1px solid rgba(169,132,255,0.2);border-radius:var(--radius);padding:16px;">
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
         <div style="width:20px;height:20px;border-radius:6px;background:rgba(169,132,255,0.15);display:flex;align-items:center;justify-content:center;">
@@ -1357,57 +1508,111 @@ async function loadInsights(){
       </div>\`;
     }
 
-    // 2.7. Activity Heatmap — 토스 스타일
-    html+=\`<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-top:10px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-        <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;">DM Activity · 24h</div>
-        <div style="font-size:16px;font-weight:800;color:var(--text);">\${peakStr}<span style="font-size:9px;color:var(--text-tertiary);font-weight:600;margin-left:4px;">KST peak</span></div>
-      </div>
-      <div style="display:flex;gap:3px;align-items:flex-end;height:60px;">
-        \${hours.map((c,h)=>{const isPeak=h===peakH&&c>0;return'<div title="'+((h%12||12)+(h<12?'AM':'PM'))+': '+c+' DMs" style="flex:1;background:'+(isPeak?'var(--accent)':c>0?'rgba(91,141,239,0.5)':'var(--bg)')+';height:'+Math.max(Math.round(c/maxHour*100),3)+'%;border-radius:20px;cursor:default;transition:all 0.3s;"></div>';}).join('')}
-      </div>
-      <div style="display:flex;justify-content:space-between;margin-top:6px;">
-        <span style="font-size:8px;color:var(--text-tertiary);">12AM</span>
-        <span style="font-size:8px;color:var(--text-tertiary);">6AM</span>
-        <span style="font-size:8px;color:var(--text-tertiary);">12PM</span>
-        <span style="font-size:8px;color:var(--text-tertiary);">6PM</span>
-        <span style="font-size:8px;color:var(--text-tertiary);">11PM</span>
-      </div>
-    </div>\`;
-
-    // 3. Top Concerns — 토스 스타일
-    if(topConcerns.length){
-      html+=\`<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-top:10px;">
-        <div style="font-size:11px;font-weight:700;color:var(--cyan);text-transform:uppercase;margin-bottom:16px;">Top Concerns</div>
-        <div style="display:flex;flex-direction:column;gap:12px;">
-          \${topConcerns.map(([t,c],i)=>'<div><div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="font-size:12px;font-weight:600;color:var(--text);">'+esc(t)+'</span><span style="font-size:12px;font-weight:800;color:'+CC[i%CC.length]+';">'+c+'</span></div><div style="height:8px;background:var(--bg);border-radius:20px;overflow:hidden;"><div style="height:100%;width:'+Math.round(c/maxConcern*100)+'%;background:'+CC[i%CC.length]+';border-radius:20px;opacity:0.75;transition:width 0.6s ease;"></div></div></div>').join('')}
+    // 3. Needs Reply — 봇 꺼진 상태에서 대기 중인 환자
+    const needsReply=[];
+    Object.entries(userLogsMap).forEach(([k,ul])=>{
+      const last=ul[0];
+      if(!last)return;
+      const rep=last.replied||'';
+      if(rep.includes('Bot paused')||rep.includes('waiting for manual')||last.tag==='paused'||last.tag==='business'){
+        const ago=Math.round((Date.now()-new Date(last.createdAt||last.timestamp))/(1000*60*60));
+        needsReply.push({username:k,senderId:last.senderId,lastMsg:(last.received||'').substring(0,60),ago,tag:last.tag});
+      }
+    });
+    needsReply.sort((a,b)=>a.ago-b.ago);
+    if(needsReply.length){
+      html+=\`<div style="background:var(--surface);border:1px solid rgba(240,100,100,0.2);border-radius:var(--radius);padding:16px;margin-top:12px;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
+          <div style="width:20px;height:20px;border-radius:6px;background:rgba(240,100,100,0.15);display:flex;align-items:center;justify-content:center;">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2.5" stroke-linecap="round"><path d="M22 2L11 13"/><path d="M22 2L15 22l-4-9-9-4z"/></svg>
+          </div>
+          <span style="font-size:11px;font-weight:700;color:var(--red);">NEEDS YOUR REPLY</span>
+          <span style="font-size:9px;color:var(--text-tertiary);margin-left:auto;">\${needsReply.length} waiting</span>
         </div>
+        \${needsReply.slice(0,5).map(p=>'<div onclick="goToPatient(&quot;'+esc(p.username)+'&quot;,&quot;'+esc(p.senderId||'')+'&quot;)" style="display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--border);cursor:pointer;"><div style="width:32px;height:32px;border-radius:50%;background:rgba(240,100,100,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;font-weight:700;color:var(--red);">'+esc(p.username.charAt(0).toUpperCase())+'</div><div style="min-width:0;flex:1;"><div style="font-size:11px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">@'+esc(p.username)+'<span style="margin-left:6px;font-size:9px;font-weight:600;color:'+(p.tag==='business'?'#E879F9':'var(--amber)')+';">'+(p.tag==='business'?'Business':'Paused')+'</span></div><div style="font-size:10px;color:var(--text-tertiary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px;">'+esc(p.lastMsg)+'</div></div><div style="font-size:9px;color:var(--text-tertiary);white-space:nowrap;flex-shrink:0;">'+(p.ago<1?'just now':p.ago<24?p.ago+'h ago':Math.round(p.ago/24)+'d ago')+'</div></div>').join('')}
       </div>\`;
     }
 
-    // 4. Patient Geography — 토스 스타일
-    if(topCountries.length){
-      html+=\`<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-top:10px;">
-        <div style="font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase;margin-bottom:16px;">Patient Geography · \${Object.keys(countries).length} countries</div>
-        <div style="display:flex;flex-direction:column;gap:12px;">
-          \${topCountries.map(([c,n],i)=>{const raw=countryRawMap[c]||c;const emoji=(raw.match(/[\\u{1F1E0}-\\u{1F1FF}]{2}/u)||[''])[0];return '<div><div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="font-size:12px;font-weight:600;color:var(--text);">'+emoji+' '+esc(c)+'</span><span style="font-size:12px;font-weight:800;color:'+CC[(i+2)%CC.length]+';">'+n+'</span></div><div style="height:8px;background:var(--bg);border-radius:20px;overflow:hidden;"><div style="height:100%;width:'+Math.round(n/maxCountry*100)+'%;background:'+CC[(i+2)%CC.length]+';border-radius:20px;opacity:0.75;transition:width 0.6s ease;"></div></div></div>';}).join('')}
+    // 4. Hot Leads — 상담 완료했지만 예약 안 한 환자
+    const hotLeads=[];
+    Object.entries(userLogsMap).forEach(([k,ul])=>{
+      const country=ul.find(l=>cleanC(l.country))?.country||'';
+      const stage=getUserStage(ul,country);
+      if(stage==='consulted'&&!(patientData[k]||{}).booked){
+        const concerns=[...new Set(ul.map(l=>l.tag).filter(t=>t&&!SKIP_TAGS.has(t)))];
+        const last=ul[0];
+        const ago=Math.round((Date.now()-new Date(last.createdAt||last.timestamp))/(1000*60*60*24));
+        hotLeads.push({username:k,senderId:last.senderId,concerns,ago,country:shortC(country)});
+      }
+    });
+    hotLeads.sort((a,b)=>a.ago-b.ago);
+    if(hotLeads.length){
+      html+=\`<div style="background:var(--surface);border:1px solid rgba(61,214,140,0.2);border-radius:var(--radius);padding:16px;margin-top:12px;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
+          <div style="width:20px;height:20px;border-radius:6px;background:rgba(61,214,140,0.15);display:flex;align-items:center;justify-content:center;">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5" stroke-linecap="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+          </div>
+          <span style="font-size:11px;font-weight:700;color:var(--green);">HOT LEADS</span>
+          <span style="font-size:9px;color:var(--text-tertiary);margin-left:auto;">\${hotLeads.length} ready to book</span>
         </div>
+        \${hotLeads.slice(0,5).map(p=>'<div onclick="goToPatient(&quot;'+esc(p.username)+'&quot;,&quot;'+esc(p.senderId||'')+'&quot;)" style="display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--border);cursor:pointer;"><div style="width:32px;height:32px;border-radius:50%;background:rgba(61,214,140,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;font-weight:700;color:var(--green);">'+esc(p.username.charAt(0).toUpperCase())+'</div><div style="min-width:0;flex:1;"><div style="font-size:11px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">@'+esc(p.username)+' <span style="font-size:9px;color:var(--text-tertiary);">'+esc(p.country)+'</span></div><div style="font-size:10px;color:var(--green);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px;">'+p.concerns.slice(0,3).map(c=>esc(c)).join(', ')+'</div></div><div style="font-size:9px;color:var(--text-tertiary);white-space:nowrap;flex-shrink:0;">'+(p.ago<1?'today':p.ago+'d ago')+'</div></div>').join('')}
       </div>\`;
     }
 
-    // 5. Funnel Health — 토스 스타일
-    const funnelData=[{l:'Follow',c:stages.follow,cl:'var(--red)'},{l:'Stuck',c:stages.stuck,cl:'var(--amber)'},{l:'Interest',c:stages.interest,cl:'var(--cyan)'},{l:'Consulted',c:stages.consulted,cl:'var(--green)'},{l:'Booked',c:bookedCount,cl:'#E879F9'}];
-    const maxF=Math.max(...funnelData.map(f=>f.c))||1;
-    html+=\`<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-top:10px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-        <div style="font-size:11px;font-weight:700;color:var(--amber);text-transform:uppercase;">Funnel Health</div>
-        <div style="font-size:18px;font-weight:800;color:var(--green);">\${convRate}%<span style="font-size:9px;color:var(--text-tertiary);font-weight:600;margin-left:4px;">conversion</span></div>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:10px;">
-        \${funnelData.map(f=>'<div><div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="font-size:11px;font-weight:600;color:var(--text-secondary);">'+f.l+'</span><span style="font-size:11px;font-weight:800;color:'+f.cl+';">'+f.c+'</span></div><div style="height:6px;background:var(--bg);border-radius:20px;overflow:hidden;"><div style="height:100%;width:'+Math.max(Math.round(f.c/maxF*100),f.c>0?6:0)+'%;background:'+f.cl+';border-radius:20px;opacity:0.8;transition:width 0.6s ease;"></div></div></div>').join('')}
-      </div>
-      \${stages.stuck>0?'<div style="margin-top:12px;padding:10px 12px;background:rgba(240,178,74,0.06);border:1px solid rgba(240,178,74,0.15);border-radius:8px;font-size:11px;color:var(--amber);"><b>⚠ Action needed:</b> '+stages.stuck+' patient'+(stages.stuck>1?'s are':' is')+' stuck. <span onclick="switchTab(\\'logs\\',null);filterByFunnel(\\'stuck\\')" style="text-decoration:underline;cursor:pointer;">View stuck patients →</span></div>':''}
-    </div>\`;
+    // 5. Gone Silent — 대화하다 조용해진 환자 (3일+)
+    const goneSilent=[];
+    Object.entries(userLogsMap).forEach(([k,ul])=>{
+      if(nfCheck[k])return;
+      const country=ul.find(l=>cleanC(l.country))?.country||'';
+      const stage=getUserStage(ul,country);
+      if(stage==='follow'||stage==='stuck')return;  // 아직 온보딩도 안 된 환자 제외
+      if((patientData[k]||{}).booked)return;  // 이미 예약한 환자 제외
+      const last=ul[0];
+      const rep=last.replied||'';
+      if(rep.includes('Bot paused')||rep.includes('waiting for manual'))return;  // needsReply에 이미 있음
+      const ago=Math.round((Date.now()-new Date(last.createdAt||last.timestamp))/(1000*60*60*24));
+      if(ago>=3)goneSilent.push({username:k,senderId:last.senderId,ago,stage,country:shortC(country)});
+    });
+    goneSilent.sort((a,b)=>a.ago-b.ago);
+    if(goneSilent.length){
+      html+=\`<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-top:12px;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
+          <div style="width:20px;height:20px;border-radius:6px;background:rgba(91,141,239,0.15);display:flex;align-items:center;justify-content:center;">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          </div>
+          <span style="font-size:11px;font-weight:700;color:var(--accent);">GONE SILENT</span>
+          <span style="font-size:9px;color:var(--text-tertiary);margin-left:auto;">\${goneSilent.length} inactive 3d+</span>
+        </div>
+        \${goneSilent.slice(0,5).map(p=>{const stageColor={interest:'var(--cyan)',consulted:'var(--green)'}[p.stage]||'var(--text-tertiary)';return'<div onclick="goToPatient(&quot;'+esc(p.username)+'&quot;,&quot;'+esc(p.senderId||'')+'&quot;)" style="display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--border);cursor:pointer;"><div style="width:32px;height:32px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;font-weight:700;color:var(--text-tertiary);">'+esc(p.username.charAt(0).toUpperCase())+'</div><div style="min-width:0;flex:1;"><div style="font-size:11px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">@'+esc(p.username)+' <span style="font-size:9px;color:var(--text-tertiary);">'+esc(p.country)+'</span></div><div style="font-size:10px;color:'+stageColor+';margin-top:1px;">'+esc(p.stage)+'</div></div><div style="font-size:9px;color:'+(p.ago>=7?'var(--red)':'var(--text-tertiary)')+';white-space:nowrap;flex-shrink:0;">'+p.ago+'d ago</div></div>';}).join('')}
+      </div>\`;
+    }
+
+    // 6. Conversion Tips — 데이터 기반 AI 추천
+    const tips=[];
+    if(stages.stuck>2)tips.push({icon:'<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2.5" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',color:'var(--amber)',text:'<b>'+stages.stuck+' patients stuck</b> at onboarding. <span onclick="switchTab(&quot;logs&quot;,null);setTimeout(function(){filterByFunnel(&quot;stuck&quot;)},300)" style="text-decoration:underline;cursor:pointer;color:var(--amber);">View stuck →</span>'});
+    if(convRate<30&&totalFunnel>=5)tips.push({icon:'<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2.5" stroke-linecap="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>',color:'var(--cyan)',text:'Conversion rate is <b>'+convRate+'%</b>. Try a follow-up DM to Interest patients. <span onclick="switchTab(&quot;logs&quot;,null);setTimeout(function(){filterByFunnel(&quot;interest&quot;)},300)" style="text-decoration:underline;cursor:pointer;color:var(--cyan);">View interest →</span>'});
+    if(goneSilent.length>=3)tips.push({icon:'<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>',color:'var(--accent)',text:'<b>'+goneSilent.length+' patients</b> went silent. A quick check-in DM can re-engage 30% of inactive leads.'});
+    const topC=Object.entries(concerns).sort((a,b)=>b[1]-a[1])[0];
+    if(topC&&topC[1]>=3)tips.push({icon:'<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5" stroke-linecap="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/></svg>',color:'var(--green)',text:'<b>'+esc(topC[0])+'</b> is your #1 concern with <b>'+topC[1]+' patients</b>. Highlight this treatment on your Instagram stories for more conversions.'});
+    const topCountry=Object.entries(countries).sort((a,b)=>b[1]-a[1])[0];
+    if(topCountry&&topCountry[1]>=3){
+      const tcConv=Object.entries(userLogsMap).filter(([k])=>{const uf=userFirst[k];return uf&&uf.country===topCountry[0];});
+      const tcConsulted=tcConv.filter(([k,ul])=>getUserStage(ul,ul.find(l=>cleanC(l.country))?.country||'')==='consulted').length;
+      const tcRate=tcConv.length?Math.round(tcConsulted/tcConv.length*100):0;
+      if(tcRate>=50)tips.push({icon:'<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#E879F9" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>',color:'#E879F9',text:'Patients from <b>'+esc(topCountry[0])+'</b> convert at <b>'+tcRate+'%</b>. Consider targeted content for this audience.'});
+    }
+    if(needsReply.some(p=>p.ago>=24))tips.push({icon:'<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',color:'var(--red)',text:'Some patients have been <b>waiting 24h+</b> for your reply. Faster responses dramatically increase booking rates.'});
+    if(tips.length){
+      html+=\`<div style="background:linear-gradient(135deg,rgba(91,141,239,0.05),rgba(61,214,140,0.05));border:1px solid rgba(91,141,239,0.15);border-radius:var(--radius);padding:16px;margin-top:12px;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
+          <div style="width:20px;height:20px;border-radius:6px;background:rgba(91,141,239,0.15);display:flex;align-items:center;justify-content:center;">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><circle cx="12" cy="12" r="10"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </div>
+          <span style="font-size:11px;font-weight:700;color:var(--accent);">CONVERSION TIPS</span>
+        </div>
+        \${tips.map(t=>'<div style="display:flex;gap:8px;padding:8px 0;border-top:1px solid var(--border);"><div style="width:20px;height:20px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">'+t.icon+'</div><div style="font-size:11px;color:var(--text-secondary);line-height:1.6;">'+t.text+'</div></div>').join('')}
+      </div>\`;
+    }
 
 
     el.innerHTML=html;
@@ -1417,6 +1622,11 @@ async function loadInsights(){
   }
 }
 
+async function goToPatient(username,senderId){
+  switchTab('logs',null);
+  await loadLogs();
+  openPatient(username,senderId);
+}
 async function loadLogs(){
   try{
     await loadPatientData();

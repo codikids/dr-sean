@@ -293,7 +293,7 @@ export async function generateReply(text, senderId, env, username) {
     const displayName = matchedTag === 'others' ? typed : matchedTag;
     await env.KV.put(`concern:${senderId}`, displayName, { expirationTtl: 60 * 60 * 24 * 90 });
     await env.KV.delete(`awaiting_concern:${senderId}`);
-    const concernReply = `${displayName} — got it! Let me help you with that 😊`;
+    const concernReply = getConcernFollowUp(displayName);
     await saveConversation(env, senderId, [...conversation, { role: 'user', text }, { role: 'assistant', text: concernReply }]);
     return { reply: concernReply, metadata };
   }
@@ -322,7 +322,7 @@ export async function generateReply(text, senderId, env, username) {
     if (matched) {
       metadata.tag = matched.toLowerCase().replace(/\s+/g, '-');
       await env.KV.put(`concern:${senderId}`, matched, { expirationTtl: 60 * 60 * 24 * 90 });
-      const concernReply = `${matched} — great choice! Let me help you with that 😊`;
+      const concernReply = getConcernFollowUp(matched);
       await saveConversation(env, senderId, [...conversation, { role: 'user', text }, { role: 'assistant', text: concernReply }]);
       return { reply: concernReply, metadata };
     }
@@ -332,7 +332,7 @@ export async function generateReply(text, senderId, env, username) {
     if (concernRetries >= 2) {
       metadata.tag = normalized.replace(/\s+/g, '-') || 'consultation';
       await env.KV.put(`concern:${senderId}`, text.trim(), { expirationTtl: 60 * 60 * 24 * 90 });
-      const rescueMsg = "Got it! Let me help you out 😊";
+      const rescueMsg = "Got it! Tell me more about what's going on — how long has it been bothering you, and what have you tried so far?";
       await saveConversation(env, senderId, [...conversation, { role: 'user', text }, { role: 'assistant', text: rescueMsg }]);
       return { reply: rescueMsg, metadata };
     }
@@ -424,6 +424,23 @@ export async function generateReply(text, senderId, env, username) {
   const visitMsg = visitMessages[Math.floor(Math.random() * visitMessages.length)];
 
   return { reply: cleanReply, metadata, followUp: { text: visitMsg } };
+}
+
+/** Concern별 맞춤 후속 질문 */
+function getConcernFollowUp(concern) {
+  const c = concern.toLowerCase();
+  const followUps = {
+    'botox': "Botox — nice! Which area are you thinking about? Forehead, crow's feet, or somewhere else? And have you had it done before?",
+    'filler': "Filler — got it! What area are you looking to treat? Lips, cheeks, nasolabial folds? Let me know if this is your first time too!",
+    'lifting': "Lifting — great choice! Is it more about skin sagging or wanting a sharper jawline? And roughly how long has it been bothering you?",
+    'anti-aging': "Anti-aging — totally get it! What's bugging you the most right now? Fine lines, wrinkles, or just overall skin texture? Any specific area?",
+    'acne': "Acne — I deal with this a lot! Is it mostly on your face? How long have you been dealing with it, and have you tried any treatments so far?",
+    'skincare': "Skincare — love it! What's your current routine like? And what's the main thing you wanna improve — texture, glow, hydration?",
+  };
+  for (const [key, reply] of Object.entries(followUps)) {
+    if (c.includes(key)) return reply;
+  }
+  return `${concern} — got it! Tell me more about what's going on. How long has it been an issue, and have you tried anything for it so far?`;
 }
 
 /** 키워드 매칭 */
@@ -554,7 +571,9 @@ BAD: "I appreciate you sharing that with me. Here are some suggestions..."
 4. Never diagnose from descriptions alone. "it sounds like it could be..." is fine. "you have..." is not.
 5. Serious stuff (weird moles, infections, severe reactions) — drop the casual tone slightly and tell them to see someone ASAP.
 6. Product recs: stick to stuff that actually works. Sunscreen, retinoids, niacinamide, ceramides, gentle cleansers.
-7. Booking: AB Clinic reservation system after May 25th.`;
+7. Booking: AB Clinic reservation system after May 25th.
+8. If someone asks about specific Botox units, dosage, or which Botox brand you use — tell them it varies by clinic and by person. Every clinic carries different products and the amount depends on the individual. They'd need to come in for that kind of detail. Keep it casual: "that really depends on the person and what we have in stock — best to sort that out when you come in!"
+9. Same for filler amounts (cc/ml), specific product brands (Juvederm, Restylane, etc.), laser device names, or any clinic-specific equipment questions — redirect to in-person consultation. You genuinely can't answer these accurately over DM.`;
 
 /** AI 시스템 프롬프트 생성 — config.aiPrompt가 있으면 그걸 사용 */
 function buildSystemPrompt(config, country) {

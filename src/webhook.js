@@ -80,15 +80,18 @@ export async function handleWebhook(request, env) {
           continue;
         }
 
-        // 중복 답변 방지 — 딜레이 중 새 메시지 오면 이전 답변 무시
+        // 중복 답변 방지 — 딜레이 중 새 메시지 오면 큐에 쌓기
         const lockKey = `replying:${senderId}`;
         const isReplying = await env.KV.get(lockKey);
         if (isReplying) {
-          // 이미 답변 생성 중 → 이 메시지는 로그만 기록
-          if (!isTestUser) await logMessage(env, { senderId, username: profile.username, received: text, replied: '[Queued — bot already replying]', timestamp, reviewed: true });
+          // 이미 답변 생성 중 → 큐에 쌓아두기 (나중에 일괄 처리)
+          const queueKey = `queue:${senderId}`;
+          const queue = JSON.parse(await env.KV.get(queueKey) || '[]');
+          queue.push({ text, timestamp, username: profile.username || '', name: profile.name || '' });
+          await env.KV.put(queueKey, JSON.stringify(queue), { expirationTtl: 300 });
           continue;
         }
-        await env.KV.put(lockKey, 'true', { expirationTtl: 180 });
+        await env.KV.put(lockKey, 'true', { expirationTtl: 300 });
 
         // 답변 생성 (reply + metadata + quickReplies + followUp)
         const result = await generateReply(text, senderId, env, profile.username);
@@ -122,6 +125,49 @@ export async function handleWebhook(request, env) {
           replied: reply,
           timestamp,
         });
+
+        // ── 큐에 쌓인 메시지 일괄 처리 ──
+        const queueKey = `queue:${senderId}`;
+        const queued = JSON.parse(await env.KV.get(queueKey) || '[]');
+        if (queued.length > 0) {
+          await env.KV.delete(queueKey);
+
+          // 각 메시지를 순서대로 처리 (flow state 진행: 국가→목적→고민 등)
+          let lastResult = null;
+          const batchResults = [];
+          for (const q of queued) {
+            const qResult = await generateReply(q.text, senderId, env, q.username);
+            batchResults.push({ ...q, result: qResult });
+            lastResult = qResult;
+          }
+
+          // 마지막 답변만 실제 전송 (중복 답장 방지)
+          if (lastResult) {
+            const batchReply = lastResult.reply;
+            const batchDelay = Math.min(dLong, Math.max(dShort, batchReply.length * ((cfg.delayMedium||60)*1000/100)));
+            await new Promise(r => setTimeout(r, batchDelay));
+            await sendMessage(senderId, batchReply, env, lastResult.quickReplies);
+            if (lastResult.followUp) {
+              await sendMessage(senderId, lastResult.followUp.text, env, lastResult.followUp.quickReplies);
+            }
+          }
+
+          // 모든 큐 메시지 로그 기록 (실제 답변 내용 포함)
+          if (!isTestUser) {
+            for (const br of batchResults) {
+              await logMessage(env, {
+                senderId,
+                username: br.username || '',
+                name: br.name || '',
+                country: br.result.metadata?.country || metadata.country || '',
+                tag: br.result.metadata?.tag || '',
+                received: br.text,
+                replied: br.result.reply,
+                timestamp: br.timestamp,
+              });
+            }
+          }
+        }
 
         // 락 해제
         await env.KV.delete(lockKey);
