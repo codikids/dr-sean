@@ -940,16 +940,12 @@ async function loadHome(){
               \${(()=>{const uf={},ul={};logs.forEach(l=>{const k=l.username||'';if(!k||!l.createdAt)return;const t=new Date(l.createdAt).getTime();if(!uf[k]||t<uf[k])uf[k]=t;if(!ul[k]||t>ul[k])ul[k]=t;});const total=Object.keys(uf).length;const returning=Object.keys(uf).filter(k=>ul[k]-uf[k]>86400000).length;const rate=total>0?Math.round(returning/total*100):0;return'<div style="font-size:18px;font-weight:800;margin-top:3px;color:var(--cyan);">'+rate+'%</div><div style="font-size:9px;color:var(--text-tertiary);">'+returning+'/'+total+' returned';})()}
             </div>
           </div>
-          <div style="margin-top:8px;padding:12px;background:var(--bg);border-radius:8px;border-left:3px solid #5B8DEF;">
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
-              <div>
-                <div style="font-size:11px;color:var(--text-secondary);font-weight:700;text-transform:uppercase;">Booking Intent</div>
-                <div style="font-size:10px;color:var(--text-tertiary);margin-top:2px;">Selected "Booking Inquiry" in purpose</div>
-              </div>
-              <div style="font-size:28px;font-weight:800;color:#5B8DEF;flex-shrink:0;">\${new Set(logs.filter(l=>l.tag==='booking').map(l=>l.username||l.senderId)).size}</div>
-            </div>
-          </div>
         </div>\`;
+        // Booking Intent — Bot Performance 카드 안, grid 밖 (전체 너비)
+        bp.querySelector('.card').insertAdjacentHTML('beforeend',\`<div style="margin-top:8px;padding:10px 12px;background:var(--bg);border-radius:8px;border-left:3px solid #5B8DEF;display:flex;align-items:center;justify-content:space-between;">
+          <div><span style="font-size:11px;color:var(--text-secondary);font-weight:600;">Booking Intent</span><div style="font-size:9px;color:var(--text-tertiary);margin-top:2px;">Patients who selected "Booking Inquiry"</div></div>
+          <span style="font-size:22px;font-weight:800;color:#5B8DEF;">\${new Set(logs.filter(l=>l.tag==='booking').map(l=>l.username||l.senderId)).size}</span>
+        </div>\`);
       }
     }
   }catch(e){}
@@ -1220,13 +1216,19 @@ async function loadInsights(){
     logs.forEach(l=>{const k=l.username||'';if(!k)return;if(!(k in nfCheck))nfCheck[k]=true;if(!(l.replied||'').includes('[Follow request - not following]'))nfCheck[k]=false;});
     const activeLogs=logs.filter(l=>!nfCheck[l.username||'']);
 
-    // 데이터 집계
-    const users=new Set(activeLogs.map(l=>l.username).filter(Boolean));
-    const concerns={},countries={},countryRawMap={};
+    // 데이터 집계 — 사용자당 1건 (첫 concern + 첫 국가)
+    const userFirst={};
     activeLogs.forEach(l=>{
-      const t=l.tag;
-      if(t&&!SKIP_TAGS.has(t))concerns[t]=(concerns[t]||0)+1;
-      const c=cleanC(l.country);if(c){countries[c]=(countries[c]||0)+1;if(!countryRawMap[c])countryRawMap[c]=l.country;}
+      const k=l.username||l.senderId||'';if(!k)return;
+      if(!userFirst[k])userFirst[k]={country:'',concern:'',raw:''};
+      if(!userFirst[k].country&&cleanC(l.country)){userFirst[k].country=cleanC(l.country);userFirst[k].raw=l.country;}
+      if(!userFirst[k].concern&&l.tag&&!SKIP_TAGS.has(l.tag))userFirst[k].concern=l.tag;
+    });
+    const users=new Set(Object.keys(userFirst));
+    const concerns={},countries={},countryRawMap={};
+    Object.values(userFirst).forEach(u=>{
+      if(u.concern)concerns[u.concern]=(concerns[u.concern]||0)+1;
+      if(u.country){countries[u.country]=(countries[u.country]||0)+1;if(!countryRawMap[u.country])countryRawMap[u.country]=u.raw;}
     });
     const topConcerns=Object.entries(concerns).sort((a,b)=>b[1]-a[1]).slice(0,5);
     const topCountries=Object.entries(countries).sort((a,b)=>b[1]-a[1]).slice(0,5);
@@ -1297,6 +1299,62 @@ async function loadInsights(){
       </div>
       <div style="font-size:12px;color:var(--text-secondary);line-height:1.8;">\${summaryParts.join(' ')}</div>
     </div>\`;
+
+    // 2.5. World Heatmap — 국가별 환자 분포 (Dot Map)
+    if(Object.keys(countries).length){
+      const MAP_POS={
+        'United States':[22,38],'Canada':[21,25],'Brazil':[35,65],'Mexico':[18,48],
+        'Argentina':[30,78],'Colombia':[27,55],
+        'UK':[47,28],'France':[48,35],'Germany':[50,30],'Spain':[46,38],
+        'Italy':[51,36],'Netherlands':[49,29],'Sweden':[52,20],'Norway':[50,18],
+        'Switzerland':[50,33],'Romania':[54,33],'Ireland':[45,28],
+        'Russia':[65,22],'Turkey':[56,37],'Egypt':[55,44],'South Africa':[55,75],
+        'Nigeria':[50,52],
+        'India':[70,47],'Pakistan':[67,42],'Bangladesh':[73,47],'Sri Lanka':[71,54],
+        'Nepal':[72,43],
+        'China':[77,37],'Japan':[85,35],'Korea':[83,35],'South Korea':[83,35],
+        'Taiwan':[82,44],'Mongolia':[77,28],
+        'Thailand':[77,50],'Vietnam':[79,50],'Indonesia':[80,60],
+        'Malaysia':[78,57],'Philippines':[83,50],'Singapore':[78,58],
+        'Myanmar':[76,48],'Cambodia':[78,52],
+        'Australia':[85,72],'New Zealand':[92,78],
+        'UAE':[62,44],'Saudi Arabia':[59,44],'Qatar':[61,44],'Israel':[56,40]
+      };
+      const allC=Object.entries(countries).sort((a,b)=>b[1]-a[1]);
+      const maxC=allC[0]?allC[0][1]:1;
+      const uid='hm'+Date.now();
+      const dots=allC.map(([name,count])=>{
+        const pos=MAP_POS[name];
+        if(!pos)return'';
+        const pct=count/maxC;
+        const r=Math.max(5,Math.round(6+pct*14));
+        const op=(0.5+pct*0.5).toFixed(2);
+        const raw=countryRawMap[name]||name;
+        const emoji=(raw.match(/[\u{1F1E0}-\u{1F1FF}]{2}/u)||[''])[0];
+        return'<div onclick="var lb=this.querySelector(\\'.hm-label\\'),wasOpen=lb.style.display===\\'flex\\';document.querySelectorAll(\\'.hm-label\\').forEach(function(e){e.style.display=\\'none\\'});if(!wasOpen)lb.style.display=\\'flex\\'" style="position:absolute;left:'+pos[0]+'%;top:'+pos[1]+'%;transform:translate(-50%,-50%);z-index:'+(10+Math.round(pct*10))+';cursor:pointer;" title="'+esc(name)+': '+count+'">'
+          +'<div class="'+uid+'-pulse" style="width:'+r*2+'px;height:'+r*2+'px;border-radius:50%;background:rgba(91,141,239,'+op+');box-shadow:0 0 '+(4+pct*12)+'px '+(2+pct*6)+'px rgba(91,141,239,'+(0.3+pct*0.4).toFixed(2)+');display:flex;align-items:center;justify-content:center;">'
+          +'<span style="font-size:'+(Math.max(7,r-3))+'px;color:#fff;font-weight:700;text-shadow:0 1px 3px rgba(0,0,0,0.6);pointer-events:none;letter-spacing:-0.3px;">'+({'United States':'US','United Kingdom':'UK','South Korea':'KR','Australia':'AU','Netherlands':'NL','Switzerland':'CH','New Zealand':'NZ','South Africa':'ZA','Saudi Arabia':'SA','Singapore':'SG','Indonesia':'ID','Philippines':'PH','Bangladesh':'BD','Sri Lanka':'LK','Thailand':'TH','Vietnam':'VN','Malaysia':'MY','Myanmar':'MM','Cambodia':'KH','Mongolia':'MN','Romania':'RO','Colombia':'CO','Argentina':'AR','Pakistan':'PK','Brazil':'BR','Mexico':'MX','Canada':'CA','France':'FR','Germany':'DE','Spain':'ES','Italy':'IT','Sweden':'SE','Norway':'NO','Ireland':'IE','Russia':'RU','Turkey':'TR','Egypt':'EG','Nigeria':'NG','India':'IN','China':'CN','Japan':'JP','Korea':'KR','Taiwan':'TW','UAE':'AE','Qatar':'QA','Israel':'IL','Nepal':'NP'}[name]||name.substring(0,2).toUpperCase())+'</span>'
+          +'</div>'
+          +'<div class="hm-label" style="display:none;position:absolute;left:50%;top:-28px;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:3px 8px;white-space:nowrap;font-size:9px;font-weight:700;color:var(--text);box-shadow:var(--shadow);align-items:center;gap:3px;z-index:99;">'+(emoji||'')+' '+esc(name)+' <span style="color:var(--accent);">'+count+'</span></div>'
+          +'</div>';
+      }).join('');
+      html+=\`<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-top:10px;">
+        <style>
+          .hm-bg{opacity:0.12;filter:brightness(2) contrast(0.5);}
+          .light .hm-bg{opacity:0.25;filter:brightness(0.8) contrast(1.2);}
+          @keyframes \${uid}-glow{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.35);opacity:0.6}}
+          .\${uid}-pulse{animation:\${uid}-glow 2.5s ease-in-out infinite;}
+        </style>
+        <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;margin-bottom:8px;">Patient Map</div>
+        <div style="position:relative;width:100%;aspect-ratio:2/1;background:var(--bg);border-radius:8px;overflow:hidden;">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/World_map_blank_without_borders.svg/1280px-World_map_blank_without_borders.svg.png" class="hm-bg" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" onerror="this.remove()">
+          \${dots}
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
+          \${allC.map(([c,n])=>{const raw=countryRawMap[c]||c;const emoji=(raw.match(/[\\u{1F1E0}-\\u{1F1FF}]{2}/u)||[''])[0];const pct=n/maxC;const bg='rgba(91,141,239,'+(0.1+pct*0.15).toFixed(2)+')';return'<span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;color:var(--text-secondary);background:'+bg+';padding:2px 8px;border-radius:20px;"><span style="font-size:12px;">'+emoji+'</span> '+esc(c)+' <b style="color:var(--accent);">'+n+'</b></span>';}).join('')}
+        </div>
+      </div>\`;
+    }
 
     // 3. Top Concerns — 바 차트
     if(topConcerns.length){
@@ -1438,7 +1496,7 @@ function renderTodaySummary(logs){
     <div style="grid-column:span 2;display:flex;gap:6px;">
       <div class="stat-card" style="flex:1;padding:10px;">
         <div class="stat-label">Today</div>
-        <div class="stat-value">\${todayLogs.length}</div>
+        <div class="stat-value">\${new Set(todayLogs.map(l=>l.username||l.senderId).filter(Boolean)).size}</div>
       </div>
       <div class="stat-card" style="flex:1;padding:10px;">
         <div class="stat-label" style="color:\${unreviewed>0?'var(--amber)':'var(--green)'};">Unreviewed</div>
@@ -1654,7 +1712,7 @@ function renderLogs(){
     const isPaused=patientData[l.username]?.paused;
     const isReviewed=l.reviewed;
     const isDirect=l.tag==='direct';
-    const globalIdx=allLogs.findIndex(x=>x.senderId===l.senderId&&x.timestamp===l.timestamp&&x.received===l.received);
+    const globalIdx=allLogs.findIndex(x=>x.createdAt===l.createdAt&&x.senderId===l.senderId);
     return \`<div class="log-item \${noCountry?'log-no-country':''} \${isReviewed?'reviewed':'unreviewed'}" style="cursor:pointer;" onclick="if(!event.target.closest('button,.log-action-btn,.log-expand,input,textarea'))openPatient('\${esc(l.username)}','\${esc(l.senderId)}')">
       <div class="log-header">
         <div class="log-badges">

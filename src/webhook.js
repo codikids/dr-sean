@@ -80,6 +80,16 @@ export async function handleWebhook(request, env) {
           continue;
         }
 
+        // 중복 답변 방지 — 딜레이 중 새 메시지 오면 이전 답변 무시
+        const lockKey = `replying:${senderId}`;
+        const isReplying = await env.KV.get(lockKey);
+        if (isReplying) {
+          // 이미 답변 생성 중 → 이 메시지는 로그만 기록
+          if (!isTestUser) await logMessage(env, { senderId, username: profile.username, received: text, replied: '[Queued — bot already replying]', timestamp, reviewed: true });
+          continue;
+        }
+        await env.KV.put(lockKey, 'true', { expirationTtl: 180 });
+
         // 답변 생성 (reply + metadata + quickReplies + followUp)
         const result = await generateReply(text, senderId, env, profile.username);
         const reply = result.reply;
@@ -112,6 +122,9 @@ export async function handleWebhook(request, env) {
           replied: reply,
           timestamp,
         });
+
+        // 락 해제
+        await env.KV.delete(lockKey);
       }
     }
 
