@@ -57,7 +57,7 @@ export async function generateReply(text, senderId, env, username) {
 
   // ── A) 첫 메시지 → 인사 먼저, 그다음 국가 질문 + 버튼 ──
   if (isFirst) {
-    const countryAsk = "Quick question — where are you based? This helps me give you more accurate advice for your skin and climate!";
+    const countryAsk = config.msgCountryAsk || "Quick question — where are you based? This helps me give you more accurate advice for your skin and climate!";
     await saveConversation(env, senderId, [
       { role: 'user', text },
       { role: 'assistant', text: config.greeting },
@@ -92,7 +92,7 @@ export async function generateReply(text, senderId, env, username) {
     await env.KV.delete(`awaiting_country:${senderId}`);
     const CONCERN_OPTIONS = config.concernOptions || DEFAULT_CONCERNS;
     const countryReply = `Got it, ${flag} ${typedCountry}! Great to connect with you.`;
-    const purposeAsk = "What brings you here today? Tap below!";
+    const purposeAsk = config.msgPurposeAsk || "What brings you here today? Tap below!";
     await saveConversation(env, senderId, [
       ...conversation,
       { role: 'user', text },
@@ -142,7 +142,7 @@ export async function generateReply(text, senderId, env, username) {
       await env.KV.put(`country:${senderId}`, metadata.country, { expirationTtl: 60 * 60 * 24 * 90 });
       const CONCERN_OPTIONS = config.concernOptions || DEFAULT_CONCERNS;
       const countryReply = `Got it, ${flag} ${matched}! Great to connect with you.`;
-      const purposeAsk = "What brings you here today? Tap below!";
+      const purposeAsk = config.msgPurposeAsk || "What brings you here today? Tap below!";
       await saveConversation(env, senderId, [
         ...conversation,
         { role: 'user', text },
@@ -163,7 +163,7 @@ export async function generateReply(text, senderId, env, username) {
       await env.KV.put(`country:${senderId}`, metadata.country, { expirationTtl: 60 * 60 * 24 * 90 });
       const CONCERN_OPTIONS = config.concernOptions || DEFAULT_CONCERNS;
       const rescueMsg = `Got it! Let's get started 😊`;
-      const purposeAsk = "What brings you here today? Tap below!";
+      const purposeAsk = config.msgPurposeAsk || "What brings you here today? Tap below!";
       await saveConversation(env, senderId, [
         ...conversation,
         { role: 'user', text },
@@ -207,7 +207,7 @@ export async function generateReply(text, senderId, env, username) {
       // matched found via fuzzy
       await env.KV.put(`purpose:${senderId}`, matched, { expirationTtl: 60 * 60 * 24 * 90 });
       if (matched === 'business') {
-        const bizReply = "Thanks for reaching out! For business inquiries, please hold on — I'll get back to you personally soon 🙏";
+        const bizReply = config.msgBusinessReply || "Thanks for reaching out! For business inquiries, please hold on — I'll get back to you personally soon 🙏";
         metadata.tag = 'business';
         // 봇 자동 Pause — 이후 AI 답변 차단, 직접 응대
         if(username){const pd=await getPatientData(env);if(!pd[username])pd[username]={};pd[username].paused=true;await savePatientData(env,pd);}
@@ -215,38 +215,34 @@ export async function generateReply(text, senderId, env, username) {
         return { reply: bizReply, metadata };
       }
       if (matched === 'booking') {
-        const bookReply = config.booking
-          ? `For booking inquiries — ${config.booking}\n\nStarting May 25th, all appointments go through AB Clinic's reservation system. I'll share the details once it's live!\n\nIf you have any skin-related questions, feel free to ask anytime!`
-          : "For booking inquiries, I'll be at AB Clinic starting May 25th! I'll share the reservation details soon.\n\nIf you have any skin-related questions, feel free to ask anytime!";
+        const bookReply = config.msgBookingReply || "For booking inquiries, I'll be at AB Clinic starting May 25th! I'll share the reservation details soon.\n\nIf you have any skin-related questions, feel free to ask anytime!";
         metadata.tag = 'booking';
         await saveConversation(env, senderId, [...conversation, { role: 'user', text }, { role: 'assistant', text: bookReply }]);
         return { reply: bookReply, metadata };
       }
       // skin consultation → concern 선택으로
       const CONCERN_OPTIONS = config.concernOptions || DEFAULT_CONCERNS;
-      const skinReply = "Great! What specific skin concern can I help you with?";
+      const skinReply = config.msgSkinReply || "Great! What specific skin concern can I help you with?";
       await saveConversation(env, senderId, [...conversation, { role: 'user', text }, { role: 'assistant', text: skinReply }]);
       return { reply: skinReply, metadata, followUp: { text: '', quickReplies: CONCERN_OPTIONS } };
     }
     // 정확 매칭
     await env.KV.put(`purpose:${senderId}`, purposeMatch, { expirationTtl: 60 * 60 * 24 * 90 });
     if (purposeMatch === 'business') {
-      const bizReply = "Thanks for reaching out! For business inquiries, please hold on — I'll get back to you personally soon 🙏";
+      const bizReply = config.msgBusinessReply || "Thanks for reaching out! For business inquiries, please hold on — I'll get back to you personally soon 🙏";
       metadata.tag = 'business';
       await saveConversation(env, senderId, [...conversation, { role: 'user', text }, { role: 'assistant', text: bizReply }]);
       return { reply: bizReply, metadata };
     }
     if (purposeMatch === 'booking') {
-      const bookReply = config.booking
-        ? `For booking inquiries — ${config.booking}\n\nStarting May 25th, all appointments go through AB Clinic's reservation system. I'll share the details once it's live!`
-        : "For booking inquiries, I'll be at AB Clinic starting May 25th! I'll share the reservation details soon. In the meantime, feel free to ask me anything about treatments!";
+      const bookReply = config.msgBookingReply || "For booking inquiries, I'll be at AB Clinic starting May 25th! I'll share the reservation details soon.\n\nIf you have any skin-related questions, feel free to ask anytime!";
       metadata.tag = 'booking';
       await saveConversation(env, senderId, [...conversation, { role: 'user', text }, { role: 'assistant', text: bookReply }]);
       return { reply: bookReply, metadata };
     }
     // skin → concern 선택
     const CONCERN_OPTIONS = config.concernOptions || DEFAULT_CONCERNS;
-    const skinReply = "Great! What specific skin concern can I help you with? Tap below!";
+    const skinReply = config.msgSkinReply || "Great! What specific skin concern can I help you with? Tap below!";
     await saveConversation(env, senderId, [...conversation, { role: 'user', text }, { role: 'assistant', text: skinReply }]);
     return { reply: skinReply, metadata, quickReplies: CONCERN_OPTIONS };
   }
@@ -293,9 +289,12 @@ export async function generateReply(text, senderId, env, username) {
     const displayName = matchedTag === 'others' ? typed : matchedTag;
     await env.KV.put(`concern:${senderId}`, displayName, { expirationTtl: 60 * 60 * 24 * 90 });
     await env.KV.delete(`awaiting_concern:${senderId}`);
-    const concernReply = getConcernFollowUp(displayName);
-    await saveConversation(env, senderId, [...conversation, { role: 'user', text }, { role: 'assistant', text: concernReply }]);
-    return { reply: concernReply, metadata };
+    let concernReply = getConcernFollowUp(displayName);
+    const videoLink = await findFeedVideo(env, displayName) || await findFeedVideo(env, typed);
+    if (videoLink) concernReply += "\n\nbtw check out this video I made about this! 👇\n" + videoLink;
+    const visitMsg = "For the full picture, nothing beats an in-person consultation! Come see Dr. Sean at AB Clinic and we'll figure out the perfect approach for you.";
+    await saveConversation(env, senderId, [...conversation, { role: 'user', text }, { role: 'assistant', text: concernReply }, { role: 'assistant', text: visitMsg }]);
+    return { reply: concernReply, metadata, followUp: { text: visitMsg } };
   }
 
   if (hasCountry && (hasPurpose === 'skin' || hasPurpose === 'booking') && !hasConcern) {
@@ -322,9 +321,12 @@ export async function generateReply(text, senderId, env, username) {
     if (matched) {
       metadata.tag = matched.toLowerCase().replace(/\s+/g, '-');
       await env.KV.put(`concern:${senderId}`, matched, { expirationTtl: 60 * 60 * 24 * 90 });
-      const concernReply = getConcernFollowUp(matched);
-      await saveConversation(env, senderId, [...conversation, { role: 'user', text }, { role: 'assistant', text: concernReply }]);
-      return { reply: concernReply, metadata };
+      let concernReply = getConcernFollowUp(matched);
+      const videoLink = await findFeedVideo(env, matched);
+      if (videoLink) concernReply += "\n\nbtw check out this video I made about " + matched.toLowerCase() + "! 👇\n" + videoLink;
+      const visitMsg = "For the full picture, nothing beats an in-person consultation! Come see Dr. Sean at AB Clinic and we'll figure out the perfect approach for you.";
+      await saveConversation(env, senderId, [...conversation, { role: 'user', text }, { role: 'assistant', text: concernReply }, { role: 'assistant', text: visitMsg }]);
+      return { reply: concernReply, metadata, followUp: { text: visitMsg } };
     }
 
     // 매칭 안 됨 — concern으로 직접 저장
@@ -343,6 +345,23 @@ export async function generateReply(text, senderId, env, username) {
 
   // 저장된 concern 불러오기
   if (hasConcern && !metadata.tag) metadata.tag = hasConcern.toLowerCase().replace(/\s+/g, '-');
+
+  // ── B-0) 직접 상담 요청 감지 → 자동 pause ──
+  const HUMAN_REQUEST = /\b(real (person|doctor|human)|talk to (a |the )?(human|person|doctor|someone real)|not (an? )?ai|hate ai|stop ai|want (a )?real|speak to (sean|dr|doctor)|직접|실제|사람|human please|can i talk to|i('d| would) (rather|prefer) (talk|speak))\b/i;
+  if (HUMAN_REQUEST.test(text)) {
+    metadata.tag = 'paused';
+    const pauseReply = "Absolutely! Let me get Dr. Sean for you — he'll reply personally as soon as he can. Hang tight! 🙏";
+    if (username) {
+      const pd = await getPatientData(env);
+      if (!pd[username]) pd[username] = {};
+      pd[username].paused = true;
+      pd[username].humanRequest = true;
+      pd[username].humanRequestAt = new Date().toISOString();
+      await savePatientData(env, pd);
+    }
+    await saveConversation(env, senderId, [...conversation, { role: 'user', text }, { role: 'assistant', text: pauseReply }]);
+    return { reply: pauseReply, metadata };
+  }
 
   // ── B) 키워드 매칭 ──
   const keywordReply = matchKeyword(text, config.keywords);
@@ -413,6 +432,22 @@ export async function generateReply(text, senderId, env, username) {
     { role: 'assistant', text: cleanReply },
   ]);
 
+  // ── D) Instagram 피드 매칭 — concern과 관련된 영상 검색 ──
+  let feedLink = '';
+  try {
+    const cachedStats = await env.KV.get('cache:ig_stats', 'json');
+    if (cachedStats && cachedStats.posts && cachedStats.posts.length) {
+      const searchTerms = [metadata.tag, text.toLowerCase()].filter(Boolean);
+      const matchedPost = cachedStats.posts.find(p => {
+        const caption = (p.caption || '').toLowerCase();
+        return searchTerms.some(t => t && caption.includes(t));
+      });
+      if (matchedPost && matchedPost.permalink) {
+        feedLink = "\n\nbtw I actually made a video about this! Check it out 👇\n" + matchedPost.permalink;
+      }
+    }
+  } catch(e) {}
+
   // 병원 내방 안내 — 별도 메시지로 전송
   const visitMessages = [
     "For a more detailed consultation, I'd love to see you in person at AB Clinic! We can go over everything together and find the best plan for you.",
@@ -423,10 +458,24 @@ export async function generateReply(text, senderId, env, username) {
   ];
   const visitMsg = visitMessages[Math.floor(Math.random() * visitMessages.length)];
 
-  return { reply: cleanReply, metadata, followUp: { text: visitMsg } };
+  return { reply: cleanReply + feedLink, metadata, followUp: { text: visitMsg } };
 }
 
 /** Concern별 맞춤 후속 질문 */
+/** 인스타 피드에서 concern 키워드 매칭 영상 찾기 */
+async function findFeedVideo(env, keyword) {
+  try {
+    const cached = await env.KV.get('cache:ig_stats', 'json');
+    if (!cached || !cached.posts || !cached.posts.length) return null;
+    const kw = keyword.toLowerCase();
+    const match = cached.posts.find(p => {
+      const cap = (p.caption || '').toLowerCase();
+      return cap.includes(kw);
+    });
+    return match && match.permalink ? match.permalink : null;
+  } catch(e) { return null; }
+}
+
 function getConcernFollowUp(concern) {
   const c = concern.toLowerCase();
   const followUps = {
@@ -532,7 +581,7 @@ async function askClaude(text, conversation, config, env, country) {
 }
 
 /** 기본 프롬프트 */
-const DEFAULT_PROMPT = `You're a real dermatologist — not an AI, not a chatbot, not a customer service rep. You're a 30-something guy who genuinely loves skincare and helping people feel good about their skin. You happen to be really good at what you do, and you're texting back between patients.
+const DEFAULT_PROMPT = `You are Melia, Dr. Sean's AI skin consultation assistant. You're knowledgeable, friendly, and casual — like a smart friend who knows a lot about dermatology. You work alongside Dr. Sean and help patients with initial consultations via DM.
 
 ## How You Talk
 - You text like a normal person. Short. Casual. Real.
@@ -562,7 +611,7 @@ BAD: "I appreciate you sharing that with me. Here are some suggestions..."
    - "i think [treatment] could work really well for you, but i'd wanna take a proper look first before we commit to anything"
    - "hard to say exactly without seeing it tbh. when you come in i can figure out the best game plan"
    - "this is what i'd lean towards, but everyone's skin is different — let's figure it out together when you visit"
-6. NEVER say "you should book" or "schedule a consultation." Instead: "come see me" / "when you visit" / "let's sort it out in person"
+6. NEVER say "you should book" or "schedule a consultation." Instead: "come see Dr. Sean" / "when you visit" / "let's sort it out in person"
 
 ## Medical Rules — NON-NEGOTIABLE
 1. You CAN give general skincare advice, explain treatments, suggest OTC products. But keep it casual — "a lot of people find that..." not "studies have shown that..."
@@ -613,7 +662,7 @@ ${config.treatments || '(No treatment info registered yet)'}
 1. ALWAYS respond in English, even if the user writes in another language.
 2. Be honest about what you can and can't assess over DM. Honesty builds trust.
 3. Do NOT include clinic visit invitations in your reply. A separate follow-up message will handle that automatically. Focus ONLY on the skin advice itself. Keep your reply under 600 characters.
-4. NEVER reveal you are an AI, bot, or automated system. You ARE Dr. Sean — a real dermatologist. Never say "AI generated", "I'm an AI", "as an AI", or anything similar. If asked, deflect naturally.
+4. You ARE Melia, Dr. Sean's AI assistant. You can acknowledge being an AI assistant if asked — that's fine. But always emphasize you work with Dr. Sean and he reviews everything. If they want to talk to Dr. Sean directly, say "Sure! Let me get Dr. Sean for you" (the system will handle pausing).
 5. ${config.customRules || ''}
 
 ## IMPORTANT: Response Format

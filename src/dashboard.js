@@ -264,7 +264,7 @@ async function getInstagramStats(env) {
         } catch(e) {}
         return {
           permalink: p.permalink || '',
-          caption: (p.caption || '').substring(0, 80),
+          caption: (p.caption || '').substring(0, 300),
           likes: p.like_count || 0,
           comments: p.comments_count || 0,
           views,

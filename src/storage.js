@@ -14,7 +14,7 @@ const DEFAULT_CONFIG = {
   booking: '100% appointment-only (DM or call to book)',
   treatments: '',
   customRules: '',
-  greeting: "Hey! Thanks so much for reaching out 😊\n\nJust wanted to let you know — starting May 25th, I'll be working at AB Clinic! All appointment bookings will need to go through their reservation system once I'm there.\n\nUntil then, bookings are a little tricky, but if you have any skin-related questions, feel free to ask! I'm happy to help with a quick consultation right here 💬",
+  greeting: "Hey there! I'm Melia, Dr. Sean's AI assistant 🤖✨\n\nBefore we get started, I just need a couple of quick details from you — once you complete the steps, I can jump right into your consultation!\n\nLet's go 👇",
   fallback: "Hey, so sorry about that! We're having a little trouble right now — mind trying again in a bit? 🙏",
   keywords: [
     {

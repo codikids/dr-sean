@@ -56,7 +56,7 @@ export async function handleWebhook(request, env) {
         const profile = await getUserProfile(senderId, env);
 
         // 테스트 계정 체크
-        const TEST_USERS = ['jinyoungchoii', 'iaminkyjj', 'ev_ssunny', '1kimsean'];
+        const TEST_USERS = ['ev_ssunny'];
         const isTestUser = TEST_USERS.includes(profile.username);
 
         // 팔로우 안 한 사람 → 팔로우 안내 + "팔로우 완료" 버튼
@@ -101,10 +101,11 @@ export async function handleWebhook(request, env) {
 
         // 자연스러운 답변 딜레이 (Settings에서 조정 가능)
         const cfg = await getConfig(env);
-        const dShort = (cfg.delayShort || 30) * 1000;
-        const dLong = (cfg.delayLong || 120) * 1000;
-        const delay = Math.min(dLong, Math.max(dShort, reply.length * ((cfg.delayMedium||60)*1000/100)));
-        await new Promise(r => setTimeout(r, delay));
+        const dShort = (cfg.delayShort ?? 30) * 1000;
+        const dLong = (cfg.delayLong ?? 120) * 1000;
+        const dMed = (cfg.delayMedium ?? 60) * 1000;
+        const delay = dShort === 0 ? 0 : Math.min(dLong, Math.max(dShort, reply.length * (dMed/100)));
+        if (delay > 0) await new Promise(r => setTimeout(r, delay));
 
         // Instagram API로 답장 전송
         await sendMessage(senderId, reply, env, quickReplies);
@@ -144,8 +145,8 @@ export async function handleWebhook(request, env) {
           // 마지막 답변만 실제 전송 (중복 답장 방지)
           if (lastResult) {
             const batchReply = lastResult.reply;
-            const batchDelay = Math.min(dLong, Math.max(dShort, batchReply.length * ((cfg.delayMedium||60)*1000/100)));
-            await new Promise(r => setTimeout(r, batchDelay));
+            const batchDelay = dShort === 0 ? 0 : Math.min(dLong, Math.max(dShort, batchReply.length * (dMed/100)));
+            if (batchDelay > 0) await new Promise(r => setTimeout(r, batchDelay));
             await sendMessage(senderId, batchReply, env, lastResult.quickReplies);
             if (lastResult.followUp) {
               await sendMessage(senderId, lastResult.followUp.text, env, lastResult.followUp.quickReplies);

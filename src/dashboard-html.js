@@ -350,15 +350,24 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
       <div class="dot"></div>
       <span id="botLabel">Active</span>
     </div>
+    <button class="header-btn" onclick="openNotifPanel()" title="Notifications" style="position:relative;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+      <span id="notifBadge" style="display:none;position:absolute;top:2px;right:2px;width:8px;height:8px;background:var(--red);border-radius:50%;"></span>
+    </button>
     <button class="header-btn" onclick="location.reload()" title="Refresh">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
     </button>
-    <button class="header-btn" onclick="toggleTheme()" id="themeBtn" title="Toggle theme">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-    </button>
-    <button class="header-btn" onclick="logout()" title="Logout">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-    </button>
+  </div>
+</div>
+
+<!-- Notification Panel -->
+<div id="notifPanel" style="display:none;position:fixed;top:52px;right:8px;width:300px;max-height:400px;overflow-y:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 12px 40px rgba(0,0,0,0.4);z-index:999;padding:12px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+    <span style="font-size:12px;font-weight:700;color:var(--text);">New DMs</span>
+    <span onclick="clearNotifs()" style="font-size:10px;color:var(--text-tertiary);cursor:pointer;">Clear all</span>
+  </div>
+  <div id="notifList" style="display:flex;flex-direction:column;gap:6px;">
+    <div style="text-align:center;padding:20px;font-size:11px;color:var(--text-tertiary);">No new messages</div>
   </div>
 </div>
 
@@ -367,11 +376,11 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
   <button class="nav-item active" onclick="switchTab('home',this)" style="flex-direction:row;gap:6px;padding:8px 16px;">
     <span class="nav-label" style="font-size:13px;">Home</span>
   </button>
-  <button class="nav-item" onclick="switchTab('analytics',this)" style="flex-direction:row;gap:6px;padding:8px 16px;">
-    <span class="nav-label" style="font-size:13px;">Analytics</span>
-  </button>
   <button class="nav-item" onclick="switchTab('logs',this)" style="flex-direction:row;gap:6px;padding:8px 16px;">
     <span class="nav-label" style="font-size:13px;">Logs</span>
+  </button>
+  <button class="nav-item" onclick="switchTab('analytics',this)" style="flex-direction:row;gap:6px;padding:8px 16px;">
+    <span class="nav-label" style="font-size:13px;">Analytics</span>
   </button>
   <button class="nav-item" onclick="switchTab('insights',this)" style="flex-direction:row;gap:6px;padding:8px 16px;">
     <span class="nav-label" style="font-size:13px;">Insights</span>
@@ -480,10 +489,6 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
       <div class="card-header">Funnel Conversion</div>
       <div id="funnelConversion" style="padding:4px 0;"></div>
     </div>
-    <div class="chart-card">
-      <div class="card-header">Drop-off Points</div>
-      <div id="dropoffAnalysis" style="padding:4px 0;"></div>
-    </div>
 
     <!-- ━━ BREAKDOWN ━━ -->
     <div style="font-size:9px;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:1px;margin:18px 0 8px;">Breakdown</div>
@@ -537,16 +542,38 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
       </div>
     </div>
 
-    <!-- 3. Greeting Message -->
+    <!-- 3. Conversation Flow -->
     <div class="setting-section">
       <div class="setting-header" onclick="toggleSetting(this)">
         <div class="setting-icon"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
-        <div class="setting-info"><div class="setting-title">Greeting Message</div><div class="setting-desc">First DM auto-reply</div></div>
+        <div class="setting-info"><div class="setting-title">Conversation Flow</div><div class="setting-desc">Greeting, country, purpose & reply messages</div></div>
         <span class="setting-arrow">›</span>
       </div>
       <div class="setting-body">
-        <label class="form-label">First DM auto-message</label>
-        <textarea class="form-textarea" id="greeting" rows="4"></textarea>
+        <label class="form-label" style="margin-top:0;">1. Greeting Message</label>
+        <div style="font-size:9px;color:var(--text-tertiary);margin-bottom:4px;">First message when a new patient DMs</div>
+        <textarea class="form-textarea" id="greeting" rows="3"></textarea>
+
+        <label class="form-label">2. Country Question</label>
+        <div style="font-size:9px;color:var(--text-tertiary);margin-bottom:4px;">Sent right after greeting</div>
+        <textarea class="form-textarea" id="msgCountryAsk" rows="2"></textarea>
+
+        <label class="form-label">3. Purpose Question</label>
+        <div style="font-size:9px;color:var(--text-tertiary);margin-bottom:4px;">After country is selected</div>
+        <textarea class="form-textarea" id="msgPurposeAsk" rows="2"></textarea>
+
+        <label class="form-label">4. Skin Consultation Reply</label>
+        <div style="font-size:9px;color:var(--text-tertiary);margin-bottom:4px;">When "Skin Consultation" is selected → asks for concern</div>
+        <textarea class="form-textarea" id="msgSkinReply" rows="2"></textarea>
+
+        <label class="form-label">5. Booking Reply</label>
+        <div style="font-size:9px;color:var(--text-tertiary);margin-bottom:4px;">When "Booking Inquiry" is selected</div>
+        <textarea class="form-textarea" id="msgBookingReply" rows="3"></textarea>
+
+        <label class="form-label">6. Business Reply</label>
+        <div style="font-size:9px;color:var(--text-tertiary);margin-bottom:4px;">When "Business" is selected → auto-pauses bot</div>
+        <textarea class="form-textarea" id="msgBusinessReply" rows="2"></textarea>
+
         <button class="btn-save-card" onclick="saveConfig()">Save</button>
       </div>
     </div>
@@ -666,6 +693,29 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
         <button class="btn-save-card" onclick="saveConfig()">Save</button>
       </div>
     </div>
+    <!-- Notifications -->
+    <div class="setting-section">
+      <div class="setting-header" onclick="toggleNotifSetting()" style="cursor:pointer;">
+        <div class="setting-icon"><svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg></div>
+        <div class="setting-info"><div class="setting-title">Notifications</div><div class="setting-desc">DM alerts when dashboard is open</div></div>
+        <span id="notifToggleLabel" style="font-size:10px;font-weight:600;padding:3px 8px;border-radius:4px;"></span>
+      </div>
+    </div>
+    <!-- Appearance -->
+    <div class="setting-section">
+      <div class="setting-header" onclick="toggleTheme()" style="cursor:pointer;">
+        <div class="setting-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></div>
+        <div class="setting-info"><div class="setting-title">Appearance</div><div class="setting-desc">Toggle light / dark mode</div></div>
+        <span id="themeLabel" style="font-size:10px;font-weight:600;color:var(--text-tertiary);"></span>
+      </div>
+    </div>
+    <!-- Logout -->
+    <div class="setting-section">
+      <div class="setting-header" onclick="logout()" style="cursor:pointer;">
+        <div class="setting-icon"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></div>
+        <div class="setting-info"><div class="setting-title" style="color:var(--red);">Logout</div><div class="setting-desc">Sign out of dashboard</div></div>
+      </div>
+    </div>
     </div><!-- settings-list -->
   </div>
 
@@ -779,13 +829,13 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
     <span class="nav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
     <span class="nav-label">Home</span>
   </button>
-  <button class="nav-item" onclick="switchTab('analytics',this)">
-    <span class="nav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
-    <span class="nav-label">Analytics</span>
-  </button>
   <button class="nav-item" onclick="switchTab('logs',this)">
     <span class="nav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span>
     <span class="nav-label">Logs</span>
+  </button>
+  <button class="nav-item" onclick="switchTab('analytics',this)">
+    <span class="nav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
+    <span class="nav-label">Analytics</span>
   </button>
   <button class="nav-item" onclick="switchTab('insights',this)">
     <span class="nav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></span>
@@ -874,7 +924,7 @@ function switchTab(name, el) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   if(el) el.classList.add('active');
   // sync both navs
-  const tabs=['home','analytics','logs','insights','settings'];
+  const tabs=['home','logs','analytics','insights','settings'];
   document.querySelectorAll('.bottom-nav .nav-item').forEach((n,i)=>{n.classList.toggle('active',tabs[i]===name);});
   localStorage.setItem('drsean_tab',name);
   window.scrollTo(0,0);
@@ -1279,6 +1329,12 @@ async function loadAiUsage(){
 async function loadConfig(){
   const r=await fetch('/api/config');config=await r.json();
   ['clinicName','address','hours','phone','booking','treatments','greeting','aiPrompt','customRules','fallback'].forEach(k=>{const e=document.getElementById(k);if(e)e.value=config[k]||'';});
+  // Flow messages
+  document.getElementById('msgCountryAsk').value=config.msgCountryAsk||'Quick question — where are you based? This helps me give you more accurate advice for your skin and climate!';
+  document.getElementById('msgPurposeAsk').value=config.msgPurposeAsk||'What brings you here today? Tap below!';
+  document.getElementById('msgSkinReply').value=config.msgSkinReply||'Great! What specific skin concern can I help you with?';
+  document.getElementById('msgBookingReply').value=config.msgBookingReply||"For booking inquiries, I'll be at AB Clinic starting May 25th! I'll share the reservation details soon.\\n\\nIf you have any skin-related questions, feel free to ask anytime!";
+  document.getElementById('msgBusinessReply').value=config.msgBusinessReply||"Thanks for reaching out! For business inquiries, please hold on — I'll get back to you personally soon 🙏";
   // aiPrompt가 비어있으면 기본값 표시
   if(!document.getElementById('aiPrompt').value) document.getElementById('aiPrompt').value=DEFAULT_PROMPT;
   // 국가 버튼
@@ -1302,7 +1358,7 @@ async function loadConfig(){
   renderCommentRules();
 }
 async function saveConfig(){
-  ['clinicName','address','hours','phone','booking','treatments','greeting','aiPrompt','customRules','fallback','commentDefaultReply'].forEach(k=>{const e=document.getElementById(k);if(e)config[k]=e.value;});
+  ['clinicName','address','hours','phone','booking','treatments','greeting','aiPrompt','customRules','fallback','commentDefaultReply','msgCountryAsk','msgPurposeAsk','msgSkinReply','msgBookingReply','msgBusinessReply'].forEach(k=>{const e=document.getElementById(k);if(e)config[k]=e.value;});
   config.commentReplyEnabled = document.getElementById('commentReplyEnabled').checked;
   config.claudeApiKey = document.getElementById('claudeApiKey').value;
   config.claudeModel = document.getElementById('claudeModel').value;
@@ -1387,6 +1443,7 @@ let allLogs=[],filteredLogs=[],lp=0;const LPP=10;
 async function loadInsights(){
   const el=document.getElementById('insightsContent');
   try{
+    await loadPatientData();
     const lr=await fetch('/api/logs');const logs=await lr.json();
     if(!Array.isArray(logs)||!logs.length){el.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-tertiary);">Not enough data yet. Insights will appear as DMs come in.</div>';return;}
 
@@ -1510,7 +1567,20 @@ async function loadInsights(){
 
     // 3. Needs Reply — 봇 꺼진 상태에서 대기 중인 환자
     const needsReply=[];
+    const needsReplySet=new Set();
+    // 1) patientData에서 paused인 사람 전부
+    Object.entries(patientData).forEach(([k,v])=>{
+      if(!v.paused)return;
+      needsReplySet.add(k);
+      const ul=userLogsMap[k]||[];
+      const last=ul[0];
+      const ago=last?Math.round((Date.now()-new Date(last.createdAt||last.timestamp))/(1000*60*60)):0;
+      const isBiz=ul.some(l=>l.tag==='business');
+      needsReply.push({username:k,senderId:last?.senderId||'',lastMsg:(last?.received||'').substring(0,60),ago,tag:isBiz?'business':'paused'});
+    });
+    // 2) 로그 기반 (Bot paused 메시지)
     Object.entries(userLogsMap).forEach(([k,ul])=>{
+      if(needsReplySet.has(k))return;
       const last=ul[0];
       if(!last)return;
       const rep=last.replied||'';
@@ -1529,21 +1599,28 @@ async function loadInsights(){
           <span style="font-size:11px;font-weight:700;color:var(--red);">NEEDS YOUR REPLY</span>
           <span style="font-size:9px;color:var(--text-tertiary);margin-left:auto;">\${needsReply.length} waiting</span>
         </div>
-        \${needsReply.slice(0,5).map(p=>'<div onclick="goToPatient(&quot;'+esc(p.username)+'&quot;,&quot;'+esc(p.senderId||'')+'&quot;)" style="display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--border);cursor:pointer;"><div style="width:32px;height:32px;border-radius:50%;background:rgba(240,100,100,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;font-weight:700;color:var(--red);">'+esc(p.username.charAt(0).toUpperCase())+'</div><div style="min-width:0;flex:1;"><div style="font-size:11px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">@'+esc(p.username)+'<span style="margin-left:6px;font-size:9px;font-weight:600;color:'+(p.tag==='business'?'#E879F9':'var(--amber)')+';">'+(p.tag==='business'?'Business':'Paused')+'</span></div><div style="font-size:10px;color:var(--text-tertiary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px;">'+esc(p.lastMsg)+'</div></div><div style="font-size:9px;color:var(--text-tertiary);white-space:nowrap;flex-shrink:0;">'+(p.ago<1?'just now':p.ago<24?p.ago+'h ago':Math.round(p.ago/24)+'d ago')+'</div></div>').join('')}
+        \${(()=>{const uid='nr'+Date.now();const ri=p=>'<div onclick="goToPatient(&quot;'+esc(p.username)+'&quot;,&quot;'+esc(p.senderId||'')+'&quot;)" style="display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--border);cursor:pointer;"><div style="width:32px;height:32px;border-radius:50%;background:rgba(240,100,100,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;font-weight:700;color:var(--red);">'+esc(p.username.charAt(0).toUpperCase())+'</div><div style="min-width:0;flex:1;"><div style="font-size:11px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">@'+esc(p.username)+'<span style="margin-left:6px;font-size:9px;font-weight:600;color:'+(p.tag==='business'?'#E879F9':'var(--amber)')+';">'+(p.tag==='business'?'Business':'Paused')+'</span></div><div style="font-size:10px;color:var(--text-tertiary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px;">'+esc(p.lastMsg)+'</div></div><div style="font-size:9px;color:var(--text-tertiary);white-space:nowrap;flex-shrink:0;">'+(p.ago<1?'just now':p.ago<24?p.ago+'h ago':Math.round(p.ago/24)+'d ago')+'</div></div>';const f=needsReply.slice(0,5).map(ri).join('');const r=needsReply.length>5?'<div id="'+uid+'" style="display:none;">'+needsReply.slice(5).map(ri).join('')+'</div><div onclick="toggleMore(&quot;'+uid+'&quot;,'+(needsReply.length-5)+')" style="text-align:center;padding:8px;font-size:10px;font-weight:600;color:var(--red);cursor:pointer;border-top:1px solid var(--border);">+'+(needsReply.length-5)+' more...</div>':'';return f+r;})()}
       </div>\`;
     }
 
-    // 4. Hot Leads — 상담 완료했지만 예약 안 한 환자
+    // 4. Hot Leads — 예약 의향 보인 환자 (booking 태그 or 예약 키워드)
+    const BOOKING_WORDS=['book','reserve','appointment','schedule','visit','come in','coming to','travel','trip','flying','how to book','make a booking'];
+    const matchesBooking=(text)=>{const t=(text||'').toLowerCase();return BOOKING_WORDS.some(w=>t.includes(w));};
+    const allUserLogs={};
+    logs.forEach(l=>{const k=l.username||'';if(!k)return;if(!allUserLogs[k])allUserLogs[k]=[];allUserLogs[k].push(l);});
     const hotLeads=[];
-    Object.entries(userLogsMap).forEach(([k,ul])=>{
+    Object.entries(allUserLogs).forEach(([k,ul])=>{
+      if((patientData[k]||{}).booked)return;
+      if(nfCheck[k])return;
+      const hasBookingTag=ul.some(l=>l.tag==='booking');
+      const hasBookingMsg=ul.some(l=>matchesBooking(l.received));
+      if(!hasBookingTag&&!hasBookingMsg)return;
+      const isPaused=(patientData[k]||{}).paused;
       const country=ul.find(l=>cleanC(l.country))?.country||'';
-      const stage=getUserStage(ul,country);
-      if(stage==='consulted'&&!(patientData[k]||{}).booked){
-        const concerns=[...new Set(ul.map(l=>l.tag).filter(t=>t&&!SKIP_TAGS.has(t)))];
-        const last=ul[0];
-        const ago=Math.round((Date.now()-new Date(last.createdAt||last.timestamp))/(1000*60*60*24));
-        hotLeads.push({username:k,senderId:last.senderId,concerns,ago,country:shortC(country)});
-      }
+      const concerns=[...new Set(ul.map(l=>l.tag).filter(t=>t&&!SKIP_TAGS.has(t)&&t!=='booking'))];
+      const last=ul[0];
+      const ago=Math.round((Date.now()-new Date(last.createdAt||last.timestamp))/(1000*60*60*24));
+      hotLeads.push({username:k,senderId:last.senderId,concerns:concerns.length?concerns:['booking'],ago,country:shortC(country),paused:isPaused});
     });
     hotLeads.sort((a,b)=>a.ago-b.ago);
     if(hotLeads.length){
@@ -1553,9 +1630,9 @@ async function loadInsights(){
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5" stroke-linecap="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
           </div>
           <span style="font-size:11px;font-weight:700;color:var(--green);">HOT LEADS</span>
-          <span style="font-size:9px;color:var(--text-tertiary);margin-left:auto;">\${hotLeads.length} ready to book</span>
+          <span style="font-size:9px;color:var(--text-tertiary);margin-left:auto;">\${hotLeads.length} booking intent</span>
         </div>
-        \${hotLeads.slice(0,5).map(p=>'<div onclick="goToPatient(&quot;'+esc(p.username)+'&quot;,&quot;'+esc(p.senderId||'')+'&quot;)" style="display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--border);cursor:pointer;"><div style="width:32px;height:32px;border-radius:50%;background:rgba(61,214,140,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;font-weight:700;color:var(--green);">'+esc(p.username.charAt(0).toUpperCase())+'</div><div style="min-width:0;flex:1;"><div style="font-size:11px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">@'+esc(p.username)+' <span style="font-size:9px;color:var(--text-tertiary);">'+esc(p.country)+'</span></div><div style="font-size:10px;color:var(--green);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px;">'+p.concerns.slice(0,3).map(c=>esc(c)).join(', ')+'</div></div><div style="font-size:9px;color:var(--text-tertiary);white-space:nowrap;flex-shrink:0;">'+(p.ago<1?'today':p.ago+'d ago')+'</div></div>').join('')}
+        \${(()=>{const uid='hl'+Date.now();const ri=p=>'<div onclick="goToPatient(&quot;'+esc(p.username)+'&quot;,&quot;'+esc(p.senderId||'')+'&quot;)" style="display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--border);cursor:pointer;"><div style="width:32px;height:32px;border-radius:50%;background:rgba(61,214,140,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;font-weight:700;color:var(--green);">'+esc(p.username.charAt(0).toUpperCase())+'</div><div style="min-width:0;flex:1;"><div style="font-size:11px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">@'+esc(p.username)+(p.paused?' <span style="font-size:8px;color:var(--amber);font-weight:600;">Paused</span>':'')+' <span style="font-size:9px;color:var(--text-tertiary);">'+esc(p.country)+'</span></div><div style="font-size:10px;color:var(--green);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px;">'+p.concerns.slice(0,3).map(c=>esc(c)).join(', ')+'</div></div><div style="font-size:9px;color:var(--text-tertiary);white-space:nowrap;flex-shrink:0;">'+(p.ago<1?'today':p.ago+'d ago')+'</div></div>';const f=hotLeads.slice(0,5).map(ri).join('');const r=hotLeads.length>5?'<div id="'+uid+'" style="display:none;">'+hotLeads.slice(5).map(ri).join('')+'</div><div onclick="toggleMore(&quot;'+uid+'&quot;,'+(hotLeads.length-5)+')" style="text-align:center;padding:8px;font-size:10px;font-weight:600;color:var(--green);cursor:pointer;border-top:1px solid var(--border);">+'+(hotLeads.length-5)+' more...</div>':'';return f+r;})()}
       </div>\`;
     }
 
@@ -1601,7 +1678,8 @@ async function loadInsights(){
       const tcRate=tcConv.length?Math.round(tcConsulted/tcConv.length*100):0;
       if(tcRate>=50)tips.push({icon:'<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#E879F9" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>',color:'#E879F9',text:'Patients from <b>'+esc(topCountry[0])+'</b> convert at <b>'+tcRate+'%</b>. Consider targeted content for this audience.'});
     }
-    if(needsReply.some(p=>p.ago>=24))tips.push({icon:'<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',color:'var(--red)',text:'Some patients have been <b>waiting 24h+</b> for your reply. Faster responses dramatically increase booking rates.'});
+    const waiting24=needsReply.filter(p=>p.ago>=24);
+    if(waiting24.length)tips.push({icon:'<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',color:'var(--red)',text:waiting24.map(p=>'<b style="cursor:pointer;text-decoration:underline;" onclick="goToPatient(&quot;'+esc(p.username)+'&quot;,&quot;'+esc(p.senderId||'')+'&quot;)">@'+esc(p.username)+'</b>').join(', ')+' waiting <b>'+Math.round(Math.max(...waiting24.map(p=>p.ago))/24)+'d+</b> for your reply.'});
     if(tips.length){
       html+=\`<div style="background:linear-gradient(135deg,rgba(91,141,239,0.05),rgba(61,214,140,0.05));border:1px solid rgba(91,141,239,0.15);border-radius:var(--radius);padding:16px;margin-top:12px;">
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
@@ -1622,6 +1700,12 @@ async function loadInsights(){
   }
 }
 
+function toggleMore(id,total,color){
+  const el=document.getElementById(id);
+  const btn=el.nextElementSibling;
+  if(el.style.display==='none'){el.style.display='';btn.textContent='Show less';}
+  else{el.style.display='none';btn.textContent='+'+total+' more...';}
+}
 async function goToPatient(username,senderId){
   switchTab('logs',null);
   await loadLogs();
@@ -1771,6 +1855,22 @@ function renderTodaySummary(logs){
       </div>
     </div>
   \`;
+  // "Wants Dr. Sean" — AI 대신 직접 상담 요청한 환자
+  const humanReqUsers=Object.entries(patientData).filter(([k,v])=>v.humanRequest&&v.paused);
+  const hrList=humanReqUsers.map(([k,v])=>{
+    const uLogs=logs.filter(l=>(l.username||l.senderId)===k);
+    const last=uLogs[0];
+    const ago=last?Math.round((Date.now()-new Date(v.humanRequestAt||last?.createdAt||last?.timestamp))/(1000*60*60)):0;
+    return{username:k,senderId:last?.senderId||'',ago};
+  }).sort((a,b)=>a.ago-b.ago);
+  el.innerHTML+=\`<div style="grid-column:span 2;background:linear-gradient(135deg,rgba(240,100,100,0.06),rgba(240,178,74,0.04));border:1px solid rgba(240,100,100,0.2);border-radius:var(--radius);padding:12px;margin-top:2px;">
+    <div style="display:flex;align-items:center;gap:6px;\${hrList.length?'margin-bottom:8px;':''}">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span style="font-size:11px;font-weight:700;color:var(--red);">Wants Dr. Sean</span>
+      <span style="font-size:9px;color:var(--text-tertiary);margin-left:auto;">\${hrList.length?hrList.length+' waiting':'None'}</span>
+    </div>
+    \${hrList.length?hrList.map(p=>'<div onclick="goToPatient(&quot;'+esc(p.username)+'&quot;,&quot;'+esc(p.senderId)+'&quot;)" style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;'+(hrList.indexOf(p)>0?'border-top:1px solid var(--border);':'')+'"><div style="width:26px;height:26px;border-radius:50%;background:rgba(240,100,100,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:10px;font-weight:700;color:var(--red);">'+esc(p.username.charAt(0).toUpperCase())+'</div><div style="flex:1;font-size:11px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">@'+esc(p.username)+'</div><div style="font-size:9px;color:var(--text-tertiary);">'+(p.ago<1?'now':p.ago<24?p.ago+'h':Math.round(p.ago/24)+'d')+'</div></div>').join(''):''}
+  </div>\`;
 }
 
 let funnelFilter='',purposeFilter='';
@@ -2180,15 +2280,95 @@ function toggleTheme(){
   if(activeTab==='home')loadHome();
   if(activeTab==='analytics')loadAnalytics();
   if(activeTab==='insights')loadInsights();
-  // 아이콘 전환
-  const btn=document.getElementById('themeBtn');
-  btn.innerHTML=isLight
-    ?'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>'
-    :'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>';
+  const tl=document.getElementById('themeLabel');
+  if(tl)tl.textContent=isLight?'Light':'Dark';
 }
 // 저장된 테마 복원
-if(localStorage.getItem('drsean_theme')==='light'){document.documentElement.classList.add('light');document.getElementById('themeBtn').innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>';}
+if(localStorage.getItem('drsean_theme')==='light'){document.documentElement.classList.add('light');}
+(function(){const tl=document.getElementById('themeLabel');if(tl)tl.textContent=document.documentElement.classList.contains('light')?'Light':'Dark';})();
 function logout(){localStorage.removeItem('drsean_user');localStorage.removeItem('drsean_name');location.replace('/');}
+
+// ── Notification Polling ──
+let lastLogCount=0;
+let notifItems=[];
+function openNotifPanel(){
+  const p=document.getElementById('notifPanel');
+  p.style.display=p.style.display==='none'?'':'none';
+}
+function clearNotifs(){
+  notifItems=[];
+  document.getElementById('notifList').innerHTML='<div style="text-align:center;padding:20px;font-size:11px;color:var(--text-tertiary);">No new messages</div>';
+  document.getElementById('notifBadge').style.display='none';
+  document.getElementById('notifPanel').style.display='none';
+}
+document.addEventListener('click',function(e){
+  const p=document.getElementById('notifPanel');
+  if(p.style.display!=='none'&&!p.contains(e.target)&&!e.target.closest('[title="Notifications"]'))p.style.display='none';
+});
+async function pollNewDMs(){
+  if(!isNotifOn())return;
+  try{
+    const r=await fetch('/api/logs');const logs=await r.json();
+    if(!Array.isArray(logs))return;
+    if(lastLogCount===0){lastLogCount=logs.length;return;}
+    const newCount=logs.length-lastLogCount;
+    if(newCount<=0){lastLogCount=logs.length;return;}
+    const newLogs=logs.slice(0,newCount);
+    lastLogCount=logs.length;
+    // 알림 아이템 추가
+    newLogs.forEach(l=>{
+      if(l.tag==='direct')return;  // 직접 답장 제외
+      const isPaused=l.tag==='paused'||(l.replied||'').includes('Bot paused')||(l.replied||'').includes('get Dr. Sean');
+      const label=isPaused?'Wants direct consultation':'New DM';
+      notifItems.unshift({username:l.username||'Unknown',msg:isPaused?'Requested to talk to Dr. Sean':(l.received||'').substring(0,50),time:l.createdAt||new Date().toISOString(),senderId:l.senderId||'',isPaused});
+    });
+    if(notifItems.length>20)notifItems=notifItems.slice(0,20);
+    // UI 업데이트
+    const badge=document.getElementById('notifBadge');
+    const list=document.getElementById('notifList');
+    if(notifItems.length){
+      badge.style.display='';
+      list.innerHTML=notifItems.map(n=>{
+        const ago=Math.round((Date.now()-new Date(n.time))/(1000*60));
+        const agoStr=ago<1?'now':ago<60?ago+'m':Math.round(ago/60)+'h';
+        const bg=n.isPaused?'rgba(240,100,100,0.08)':'var(--bg)';
+        const ac=n.isPaused?'var(--red)':'var(--accent)';
+        return '<div onclick="goToPatient(&quot;'+esc(n.username)+'&quot;,&quot;'+esc(n.senderId)+'&quot;);document.getElementById(&quot;notifPanel&quot;).style.display=&quot;none&quot;" style="display:flex;align-items:center;gap:8px;padding:8px;background:'+bg+';border-radius:8px;cursor:pointer;"><div style="width:28px;height:28px;border-radius:50%;background:'+ac+'20;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;font-weight:700;color:'+ac+';">'+esc(n.username.charAt(0).toUpperCase())+'</div><div style="min-width:0;flex:1;"><div style="font-size:11px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">@'+esc(n.username)+(n.isPaused?' <span style="color:var(--red);font-size:9px;">Needs you</span>':'')+'</div><div style="font-size:10px;color:var(--text-tertiary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(n.msg)+'</div></div><div style="font-size:9px;color:var(--text-tertiary);flex-shrink:0;">'+agoStr+'</div></div>';
+      }).join('');
+    }
+    // 브라우저 알림
+    if(newLogs.length&&Notification.permission==='granted'){
+      const first=newLogs[0];
+      const isPaused=first.tag==='paused'||(first.replied||'').includes('get Dr. Sean');
+      const title=isPaused?'Dr.sean — Patient needs you!':'Dr.sean — New DM';
+      const body=isPaused?'@'+(first.username||'Unknown')+' wants to talk to Dr. Sean directly':'@'+(first.username||'Unknown')+': '+(first.received||'').substring(0,60);
+      new Notification(title,{body,icon:'/favicon.svg'});
+    }
+  }catch(e){}
+}
+// 알림 on/off
+function isNotifOn(){return localStorage.getItem('drsean_notif')!=='off';}
+function updateNotifLabel(){
+  const el=document.getElementById('notifToggleLabel');
+  if(!el)return;
+  const on=isNotifOn();
+  el.textContent=on?'On':'Off';
+  el.style.color=on?'var(--green)':'var(--text-tertiary)';
+  el.style.background=on?'rgba(61,214,140,0.1)':'var(--bg)';
+}
+function toggleNotifSetting(){
+  const on=isNotifOn();
+  if(on){
+    localStorage.setItem('drsean_notif','off');
+    toast('Notifications off');
+  }else{
+    localStorage.removeItem('drsean_notif');
+    if('Notification' in window&&Notification.permission==='default')Notification.requestPermission();
+    toast('Notifications on');
+  }
+  updateNotifLabel();
+}
+setTimeout(updateNotifLabel,500);
 
 // ── Session ──
 if(!localStorage.getItem('drsean_user'))location.replace('/');
@@ -2198,6 +2378,9 @@ if(!localStorage.getItem('drsean_user'))location.replace('/');
   const savedTab=localStorage.getItem('drsean_tab')||'home';
   switchTab(savedTab,null);
   document.querySelector('.content').classList.add('loaded');
+  // 초기 로그 카운트 설정 + 폴링 시작
+  await pollNewDMs();
+  setInterval(pollNewDMs,30000);
 })();
 <\/script>
 </body>
