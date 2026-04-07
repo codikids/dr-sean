@@ -2310,7 +2310,30 @@ async function pollNewDMs(){
   try{
     const r=await fetch('/api/logs');const logs=await r.json();
     if(!Array.isArray(logs))return;
-    if(lastLogCount===0){lastLogCount=logs.length;return;}
+    if(lastLogCount===0){
+      lastLogCount=logs.length;
+      // 초기 로드: humanRequest 환자 알림에 추가
+      try{
+        await loadPatientData();
+        Object.entries(patientData).forEach(([k,v])=>{
+          if(!v.humanRequest||!v.paused)return;
+          const ul=logs.find(l=>l.username===k);
+          notifItems.push({username:k,msg:'Requested to talk to Dr. Sean',time:v.humanRequestAt||new Date().toISOString(),senderId:ul?.senderId||'',isPaused:true});
+        });
+        if(notifItems.length){
+          document.getElementById('notifBadge').style.display='';
+          const list=document.getElementById('notifList');
+          list.innerHTML=notifItems.map(n=>{
+            const ago=Math.round((Date.now()-new Date(n.time))/(1000*60));
+            const agoStr=ago<1?'now':ago<60?ago+'m':Math.round(ago/60)+'h';
+            const bg=n.isPaused?'rgba(240,100,100,0.08)':'var(--bg)';
+            const ac=n.isPaused?'var(--red)':'var(--accent)';
+            return '<div onclick="goToPatient(&quot;'+esc(n.username)+'&quot;,&quot;'+esc(n.senderId)+'&quot;);document.getElementById(&quot;notifPanel&quot;).style.display=&quot;none&quot;" style="display:flex;align-items:center;gap:8px;padding:8px;background:'+bg+';border-radius:8px;cursor:pointer;"><div style="width:28px;height:28px;border-radius:50%;background:'+ac+'20;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;font-weight:700;color:'+ac+';">'+esc(n.username.charAt(0).toUpperCase())+'</div><div style="min-width:0;flex:1;"><div style="font-size:11px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">@'+esc(n.username)+(n.isPaused?' <span style="color:var(--red);font-size:9px;">Needs you</span>':'')+'</div><div style="font-size:10px;color:var(--text-tertiary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(n.msg)+'</div></div><div style="font-size:9px;color:var(--text-tertiary);flex-shrink:0;">'+agoStr+'</div></div>';
+          }).join('');
+        }
+      }catch(e){}
+      return;
+    }
     const newCount=logs.length-lastLogCount;
     if(newCount<=0){lastLogCount=logs.length;return;}
     const newLogs=logs.slice(0,newCount);

@@ -347,7 +347,7 @@ export async function generateReply(text, senderId, env, username) {
   if (hasConcern && !metadata.tag) metadata.tag = hasConcern.toLowerCase().replace(/\s+/g, '-');
 
   // ── B-0) 직접 상담 요청 감지 → 자동 pause ──
-  const HUMAN_REQUEST = /\b(real (person|doctor|human)|talk to (a |the )?(human|person|doctor|someone real)|not (an? )?ai|hate ai|stop ai|want (a )?real|speak to (sean|dr|doctor)|직접|실제|사람|human please|can i talk to|i('d| would) (rather|prefer) (talk|speak))\b/i;
+  const HUMAN_REQUEST = /\b(real (person|doctor|human)|talk to (a |the )?(human|person|doctor|someone real)|not (an? )?ai|hate ai|stop ai|want (a )?real|speak to (sean|dr|doctor)|직접|실제|사람|human please|can i talk to|i('d| would) (rather|prefer) (talk|speak)|are you (a )?(bot|robot|ai|automated)|is this (a )?(bot|robot|ai|automated)|not talk(ing)? to (a )?(bot|robot|machine)|connect me to|is (dr\.? )?sean (here|there|available|around)|actual doctor|real consultation|speak with (the )?(actual|real))\b/i;
   if (HUMAN_REQUEST.test(text)) {
     metadata.tag = 'paused';
     const pauseReply = "Absolutely! Let me get Dr. Sean for you — he'll reply personally as soon as he can. Hang tight! 🙏";
@@ -376,6 +376,22 @@ export async function generateReply(text, senderId, env, username) {
 
   // ── C) Claude AI 답변 (국가 정보 포함) ──
   const rawReply = await askClaude(text, conversation, config, env, metadata.country);
+
+  // AI가 [HUMAN_REQUEST] 감지 → 자동 pause
+  if (rawReply.includes('[HUMAN_REQUEST]')) {
+    const hrReply = rawReply.replace(/\[HUMAN_REQUEST\]\s*/i, '').replace(/^\[TAG:.*?\]\s*\n*/i, '').trim() || "Sure thing! Let me get Dr. Sean for you — he'll reply personally as soon as he can. Hang tight! 🙏";
+    metadata.tag = 'paused';
+    if (username) {
+      const pd = await getPatientData(env);
+      if (!pd[username]) pd[username] = {};
+      pd[username].paused = true;
+      pd[username].humanRequest = true;
+      pd[username].humanRequestAt = new Date().toISOString();
+      await savePatientData(env, pd);
+    }
+    await saveConversation(env, senderId, [...conversation, { role: 'user', text }, { role: 'assistant', text: hrReply }]);
+    return { reply: hrReply, metadata };
+  }
 
   // 메타데이터 파싱 [TAG: xxx | COUNTRY: xxx]
   const metaMatch = rawReply.match(/^\[TAG:\s*(\w[\w-]*)\s*\|\s*COUNTRY:\s*([^\]]+)\]/i);
@@ -662,7 +678,8 @@ ${config.treatments || '(No treatment info registered yet)'}
 1. ALWAYS respond in English, even if the user writes in another language.
 2. Be honest about what you can and can't assess over DM. Honesty builds trust.
 3. Do NOT include clinic visit invitations in your reply. A separate follow-up message will handle that automatically. Focus ONLY on the skin advice itself. Keep your reply under 600 characters.
-4. You ARE Melia, Dr. Sean's AI assistant. You can acknowledge being an AI assistant if asked — that's fine. But always emphasize you work with Dr. Sean and he reviews everything. If they want to talk to Dr. Sean directly, say "Sure! Let me get Dr. Sean for you" (the system will handle pausing).
+4. You ARE Melia, Dr. Sean's AI assistant. You can acknowledge being an AI assistant if asked — that's fine. But always emphasize you work with Dr. Sean and he reviews everything.
+5. CRITICAL — HUMAN REQUEST DETECTION: If the patient expresses ANY desire to talk to Dr. Sean directly, refuses AI help, asks "are you a bot?", seems frustrated with automated responses, wants a "real" consultation, or shows signs of not wanting to talk to an AI — you MUST start your reply with [HUMAN_REQUEST] on its own line, then respond naturally like: "Sure thing! Let me get Dr. Sean for you — he'll reply personally as soon as he can. Hang tight! 🙏". Examples of triggers: "can I talk to the real doctor", "I don't want AI", "is this automated", "connect me to Sean", "I want a real person", skepticism about AI accuracy, repeated frustration, etc.
 5. ${config.customRules || ''}
 
 ## IMPORTANT: Response Format
