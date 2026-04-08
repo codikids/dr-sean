@@ -984,7 +984,6 @@ async function loadHome(){
         const bpConv=bpLogs.length>0?Math.round(consulted/bpLogs.length*100):0;
         const uf={},ul2={};bpLogs.forEach(l=>{const k=l.username||'';if(!k||!l.createdAt)return;const t=new Date(l.createdAt).getTime();if(!uf[k]||t<uf[k])uf[k]=t;if(!ul2[k]||t>ul2[k])ul2[k]=t;});
         const retTotal=Object.keys(uf).length;const returning=Object.keys(uf).filter(k=>ul2[k]-uf[k]>86400000).length;const retRate=retTotal>0?Math.round(returning/retTotal*100):0;
-        const bookingIntent=new Set(bpLogs.filter(l=>l.tag==='booking').map(l=>l.username||l.senderId)).size;
         bp.innerHTML=\`<div class="card" style="background:linear-gradient(135deg,var(--surface),var(--surface-2));margin-bottom:12px;">
           <div onclick="var b=this.nextElementSibling;var a=this.querySelector('.bp-arrow');if(b.style.display==='none'){b.style.display='';a.style.transform='rotate(90deg)';}else{b.style.display='none';a.style.transform='rotate(0)';}" class="card-header" style="display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
@@ -999,10 +998,6 @@ async function loadHome(){
               <div style="padding:8px;background:var(--bg);border-radius:8px;"><div style="font-size:9px;color:var(--text-tertiary);font-weight:600;text-transform:uppercase;">Patients</div><div style="font-size:18px;font-weight:800;margin-top:3px;">\${bpUsers}</div><div style="font-size:9px;color:var(--text-tertiary);">\${bpCountries} countries</div></div>
               <div style="padding:8px;background:var(--bg);border-radius:8px;"><div style="font-size:9px;color:var(--text-tertiary);font-weight:600;text-transform:uppercase;">Time Saved</div><div style="font-size:18px;font-weight:800;margin-top:3px;color:var(--cyan);">\${bpLogs.length>=60?Math.round(bpLogs.length/60)+'h':bpLogs.length+'m'}</div><div style="font-size:9px;color:var(--text-tertiary);">~1 min/reply</div></div>
               <div style="padding:8px;background:var(--bg);border-radius:8px;"><div style="font-size:9px;color:var(--text-tertiary);font-weight:600;text-transform:uppercase;">Return Rate</div><div style="font-size:18px;font-weight:800;margin-top:3px;color:var(--cyan);">\${retRate}%</div><div style="font-size:9px;color:var(--text-tertiary);">\${returning}/\${retTotal} returned</div></div>
-            </div>
-            <div style="margin-top:8px;padding:10px 12px;background:var(--bg);border-radius:8px;display:flex;align-items:center;justify-content:space-between;">
-              <div><span style="font-size:11px;color:var(--text-secondary);font-weight:600;">Booking Intent</span><div style="font-size:9px;color:var(--text-tertiary);margin-top:2px;">Patients who selected "Booking Inquiry"</div></div>
-              <span style="font-size:22px;font-weight:800;color:#5B8DEF;">\${bookingIntent}</span>
             </div>
           </div>
         </div>\`;
@@ -1069,7 +1064,7 @@ async function loadAnalytics(){
   const peakHourRaw=new Array(24).fill(0);
   logs.forEach(l=>{const d=new Date(l.createdAt||l.timestamp);if(!isNaN(d))peakHourRaw[(d.getUTCHours()+9)%24]++;});
   const peakIdx=peakHourRaw.indexOf(Math.max(...peakHourRaw));
-  document.getElementById('statPeakTime').textContent=peakHourRaw[peakIdx]>0?((peakIdx%12||12)+(peakIdx<12?'AM':'PM')+' KST'):'-';
+  document.getElementById('statPeakTime').textContent=peakHourRaw[peakIdx]>0?((peakIdx%12||12)+(peakIdx<12?'AM':'PM')):'-';
 
   // AI vs Manual 비율
   const aiCount=logs.filter(l=>l.tag!=='direct'&&!(l.replied||'').startsWith('[')).length;
@@ -1706,6 +1701,14 @@ function toggleMore(id,total,color){
   if(el.style.display==='none'){el.style.display='';btn.textContent='Show less';}
   else{el.style.display='none';btn.textContent='+'+total+' more...';}
 }
+async function dismissHumanReq(username){
+  if(!patientData[username])return;
+  delete patientData[username].humanRequest;
+  delete patientData[username].humanRequestAt;
+  await fetch('/api/patients',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(patientData)});
+  renderTodaySummary(allLogs);
+  toast('Dismissed @'+username);
+}
 async function goToPatient(username,senderId){
   switchTab('logs',null);
   await loadLogs();
@@ -1782,16 +1785,14 @@ function renderTodaySummary(logs){
   const nfCount=Object.values(userAllNotFollow).filter(Boolean).length;
   // Booked 카운트 (수동 마킹)
   const bookedCount=Object.values(patientData).filter(p=>p.booked).length;
-  // Purpose 카운트 (business 무조건 유지, booking은 concern 있으면 skin 전환)
+  // Purpose 카운트 (business 무조건 유지, booking은 skin에도 중복 집계, tag 기준만)
   const purposeCounts={skin:0,booking:0,business:0};
   Object.keys(userMap).forEach(k=>{
     const uLogs=logs.filter(l=>(l.username||l.senderId)===k);
     const hasBiz=uLogs.some(l=>l.tag==='business');
     const hasBook=uLogs.some(l=>l.tag==='booking');
-    const hasConcern=uLogs.some(l=>l.tag&&!SKIP_TAGS.has(l.tag));
     if(hasBiz){purposeCounts.business++;}
-    else if(hasBook&&!hasConcern)purposeCounts.booking++;
-    else purposeCounts.skin++;
+    else{purposeCounts.skin++;if(hasBook)purposeCounts.booking++;}
   });
   el.innerHTML=\`
     <div style="grid-column:span 2;display:flex;gap:6px;">
@@ -1869,7 +1870,7 @@ function renderTodaySummary(logs){
       <span style="font-size:11px;font-weight:700;color:var(--red);">Wants Dr. Sean</span>
       <span style="font-size:9px;color:var(--text-tertiary);margin-left:auto;">\${hrList.length?hrList.length+' waiting':'None'}</span>
     </div>
-    \${hrList.length?hrList.map(p=>'<div onclick="goToPatient(&quot;'+esc(p.username)+'&quot;,&quot;'+esc(p.senderId)+'&quot;)" style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;'+(hrList.indexOf(p)>0?'border-top:1px solid var(--border);':'')+'"><div style="width:26px;height:26px;border-radius:50%;background:rgba(240,100,100,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:10px;font-weight:700;color:var(--red);">'+esc(p.username.charAt(0).toUpperCase())+'</div><div style="flex:1;font-size:11px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">@'+esc(p.username)+'</div><div style="font-size:9px;color:var(--text-tertiary);">'+(p.ago<1?'now':p.ago<24?p.ago+'h':Math.round(p.ago/24)+'d')+'</div></div>').join(''):''}
+    \${(()=>{if(!hrList.length)return'';const uid='hr'+Date.now();const ri=p=>'<div style="display:flex;align-items:center;gap:8px;padding:6px 0;'+(hrList.indexOf(p)>0?'border-top:1px solid var(--border);':'')+'"><div onclick="goToPatient(&quot;'+esc(p.username)+'&quot;,&quot;'+esc(p.senderId)+'&quot;)" style="display:flex;align-items:center;gap:8px;flex:1;cursor:pointer;"><div style="width:26px;height:26px;border-radius:50%;background:rgba(240,100,100,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:10px;font-weight:700;color:var(--red);">'+esc(p.username.charAt(0).toUpperCase())+'</div><div style="flex:1;font-size:11px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">@'+esc(p.username)+'</div><div style="font-size:9px;color:var(--text-tertiary);">'+(p.ago<1?'now':p.ago<24?p.ago+'h':Math.round(p.ago/24)+'d')+'</div></div><div onclick="event.stopPropagation();dismissHumanReq(&quot;'+esc(p.username)+'&quot;)" style="width:20px;height:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text-tertiary);font-size:14px;flex-shrink:0;border-radius:4px;opacity:0.5;" title="Dismiss">×</div></div>';const first3=hrList.slice(0,3).map(ri).join('');const rest=hrList.length>3?'<div id="'+uid+'" style="display:none;">'+hrList.slice(3).map(ri).join('')+'</div><div onclick="toggleMore(&quot;'+uid+'&quot;,'+(hrList.length-3)+')" style="text-align:center;padding:6px;font-size:10px;font-weight:600;color:var(--red);cursor:pointer;border-top:1px solid var(--border);">+'+(hrList.length-3)+' more...</div>':'';return first3+rest;})()}
   </div>\`;
 }
 
@@ -1970,12 +1971,22 @@ function applyFilters(){
   if(purposeFilter){
     const umNF={};
     allLogs.forEach(l=>{const k=l.username||'';if(!k)return;if(!(k in umNF))umNF[k]=true;if(!(l.replied||'').includes('[Follow request - not following]'))umNF[k]=false;});
-    const userPurpose={};
-    allLogs.forEach(l=>{const k=l.username||l.senderId||'';if(!k||umNF[k])return;if(!userPurpose[k])userPurpose[k]='skin';if(l.tag==='business')userPurpose[k]='business';if(l.tag==='booking'&&userPurpose[k]!=='business')userPurpose[k]='booking';if(l.tag&&!SKIP_TAGS.has(l.tag)&&userPurpose[k]!=='business')userPurpose[k]='skin';});
+    const userPurpose={};const userHasBooking={};
+    const userLogsGrp={};
+    allLogs.forEach(l=>{const k=l.username||l.senderId||'';if(!k||umNF[k])return;if(!userLogsGrp[k])userLogsGrp[k]=[];userLogsGrp[k].push(l);});
+    Object.entries(userLogsGrp).forEach(([k,ul])=>{
+      const hasBiz=ul.some(l=>l.tag==='business');
+      const hasBook=ul.some(l=>l.tag==='booking');
+      if(hasBiz)userPurpose[k]='business';
+      else userPurpose[k]='skin';
+      if(hasBook&&!hasBiz)userHasBooking[k]=true;
+    });
     if(purposeFilter==='skin'){
-      // skin = 퍼널 전체 (business/booking 제외)
-      const skinUsers=new Set(Object.entries(userPurpose).filter(([k,v])=>v==='skin').map(([k])=>k));
+      const skinUsers=new Set(Object.entries(userPurpose).filter(([k,v])=>v!=='business').map(([k])=>k));
       logs=logs.filter(l=>skinUsers.has(l.username||l.senderId||''));
+    }else if(purposeFilter==='booking'){
+      const bUsers=new Set(Object.keys(userHasBooking));
+      logs=logs.filter(l=>bUsers.has(l.username||l.senderId||''));
     }else{
       const pUsers=new Set(Object.entries(userPurpose).filter(([k,v])=>v===purposeFilter).map(([k])=>k));
       logs=logs.filter(l=>pUsers.has(l.username||l.senderId||''));
@@ -2039,9 +2050,16 @@ function renderLogs(){
       if(!userBestTag[key])userBestTag[key]=t;
     }
   });
-  // 사용자별 purpose 맵
-  const userPurposeMap={};
-  allLogs.forEach(l=>{const k=l.username||l.senderId||'';if(!k)return;if(!userPurposeMap[k])userPurposeMap[k]='skin';if(l.tag==='business')userPurposeMap[k]='business';if(l.tag==='booking'&&userPurposeMap[k]!=='business')userPurposeMap[k]='booking';if(l.tag&&!SKIP_TAGS.has(l.tag)&&userPurposeMap[k]!=='business')userPurposeMap[k]='skin';});
+  // 사용자별 purpose 맵 (booking은 skin과 중복 가능)
+  const userPurposeMap={};const userIsBooking={};
+  const uLogsGrp={};allLogs.forEach(l=>{const k=l.username||l.senderId||'';if(!k)return;if(!uLogsGrp[k])uLogsGrp[k]=[];uLogsGrp[k].push(l);});
+  Object.entries(uLogsGrp).forEach(([k,ul])=>{
+    const hasBiz=ul.some(l=>l.tag==='business');
+    const hasBook=ul.some(l=>l.tag==='booking');
+    if(hasBiz)userPurposeMap[k]='business';
+    else userPurposeMap[k]='skin';
+    if(hasBook&&!hasBiz)userIsBooking[k]=true;
+  });
   let idx=0;
   el.innerHTML=pg.map(l=>{
     const id='log-'+s+'-'+(idx++);
@@ -2064,7 +2082,7 @@ function renderLogs(){
       <div style="display:flex;align-items:center;gap:0;margin:-4px 0 6px;font-size:10px;font-weight:600;flex-wrap:nowrap;overflow:hidden;">
         \${(()=>{const k=l.username||l.senderId;const nf=notFollowUsers.has(k);const parts=[];
           if(!noCountry)parts.push('<span style="color:#7EB0D5;">'+esc(shortC(l.country))+'</span>');
-          if(!nf){const p=userPurposeMap[k];if(p==='business')parts.push('<span style="color:#FF8C42;">Business</span>');else if(p==='booking')parts.push('<span style="color:#5B8DEF;">Booking</span>');else parts.push('<span style="color:var(--green);">Skin</span>');}
+          if(!nf){const p=userPurposeMap[k];if(p==='business')parts.push('<span style="color:#FF8C42;">Business</span>');else{parts.push('<span style="color:var(--green);">Skin</span>');if(userIsBooking[k])parts.push('<span style="color:#5B8DEF;">Booking</span>');}}
           const bt=userBestTag[k];if(bt)parts.push('<span style="color:#A984FF;">'+esc(bt)+'</span>');
           const badge=getFunnelBadge(l,userBestTag,notFollowUsers);if(badge)parts.push(badge);
           return parts.join('<span style="color:var(--border);margin:0 6px;">│</span>');
@@ -2167,8 +2185,7 @@ function openPatient(username,senderId){
   const hasBiz=userLogs.some(l=>l.tag==='business');
   const hasBooking=userLogs.some(l=>l.tag==='booking');
   if(hasBiz){pEl.textContent='Business';pEl.style.cssText='display:inline;background:rgba(255,140,66,0.12);color:#FF8C42;';}
-  else if(hasBooking){pEl.textContent='Booking';pEl.style.cssText='display:inline;background:rgba(91,141,239,0.12);color:#5B8DEF;';}
-  else if(!isNotFollow){pEl.textContent='Skin';pEl.style.cssText='display:inline;background:rgba(61,214,140,0.08);color:var(--green);';}
+  else if(!isNotFollow){pEl.innerHTML=(hasBooking?'<span style="background:rgba(61,214,140,0.08);color:var(--green);padding:2px 6px;border-radius:6px;">Skin</span> <span style="background:rgba(91,141,239,0.12);color:#5B8DEF;padding:2px 6px;border-radius:6px;">Booking</span>':'Skin');pEl.style.cssText='display:inline;'+(hasBooking?'':'background:rgba(61,214,140,0.08);color:var(--green);');}
   else{pEl.style.display='none';}
   // Concern tag + Funnel (getUserStage 공용 함수 사용)
   const stage=getUserStage(userLogs,country);
@@ -2291,12 +2308,15 @@ function logout(){localStorage.removeItem('drsean_user');localStorage.removeItem
 // ── Notification Polling ──
 let lastLogCount=0;
 let notifItems=[];
+let notifCleared=false;
 function openNotifPanel(){
   const p=document.getElementById('notifPanel');
   p.style.display=p.style.display==='none'?'':'none';
 }
 function clearNotifs(){
   notifItems=[];
+  notifCleared=true;
+  localStorage.setItem('drsean_notif_cleared_at',new Date().toISOString());
   document.getElementById('notifList').innerHTML='<div style="text-align:center;padding:20px;font-size:11px;color:var(--text-tertiary);">No new messages</div>';
   document.getElementById('notifBadge').style.display='none';
   document.getElementById('notifPanel').style.display='none';
@@ -2312,6 +2332,8 @@ async function pollNewDMs(){
     if(!Array.isArray(logs))return;
     if(lastLogCount===0){
       lastLogCount=logs.length;
+      const clearedAt=localStorage.getItem('drsean_notif_cleared_at');
+      if(notifCleared||clearedAt)return;
       // 초기 로드: humanRequest 환자 알림에 추가
       try{
         await loadPatientData();
@@ -2336,6 +2358,7 @@ async function pollNewDMs(){
     }
     const newCount=logs.length-lastLogCount;
     if(newCount<=0){lastLogCount=logs.length;return;}
+    notifCleared=false;localStorage.removeItem('drsean_notif_cleared_at');  // 새 DM 오면 clear 리셋
     const newLogs=logs.slice(0,newCount);
     lastLogCount=logs.length;
     // 알림 아이템 추가

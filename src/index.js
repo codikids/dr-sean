@@ -8,7 +8,43 @@ import { serveDashboard, handleDashboardAPI, serveLogin } from './dashboard.js';
 
 const PRIVACY_HTML = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Privacy Policy</title><style>body{font-family:-apple-system,sans-serif;max-width:600px;margin:40px auto;padding:0 20px;color:#333;line-height:1.6}h1{font-size:24px}h2{font-size:18px;margin-top:24px}</style></head><body><h1>Privacy Policy</h1><p>Last updated: April 3, 2026</p><h2>What We Collect</h2><p>When you send a direct message to our Instagram account, we process your message content to provide automated responses. We also store your Instagram user ID and message history temporarily to maintain conversation context.</p><h2>How We Use Your Data</h2><p>Your data is used solely to provide automated DM responses. We do not sell or share your personal data with third parties.</p><h2>Data Retention</h2><p>Conversation history is automatically deleted after 7 days. DM logs are retained for up to 30 days.</p><h2>Data Security</h2><p>All data is stored securely using Cloudflare infrastructure with encryption at rest and in transit.</p><h2>Your Rights</h2><p>You may request deletion of your data at any time by contacting us via Instagram DM.</p></body></html>`;
 
+import { getRecentLogs, getPatientData, savePatientData } from './storage.js';
+
 export default {
+  // ── Cron: 매시간 — 24시간 무응답 환자 자동 pause ──
+  async scheduled(event, env, ctx) {
+    try {
+      const logs = await getRecentLogs(env);
+      if (!logs.length) return;
+      const pd = await getPatientData(env);
+      const now = Date.now();
+      // 사용자별 마지막 로그
+      const userLast = {};
+      logs.forEach(l => {
+        const k = l.username || '';
+        if (!k) return;
+        if (!userLast[k]) userLast[k] = l;
+      });
+      let changed = false;
+      Object.entries(userLast).forEach(([username, last]) => {
+        if ((pd[username] || {}).paused) return; // 이미 paused
+        // AI 상담한 적 있는지 (replied가 시스템 메시지가 아닌 경우)
+        const replied = last.replied || '';
+        if (replied.startsWith('[') || last.tag === 'direct') return; // 시스템/직접 답장
+        // 마지막 활동 24시간 경과 체크
+        const lastTime = new Date(last.createdAt || last.timestamp).getTime();
+        if (now - lastTime >= 24 * 60 * 60 * 1000) {
+          if (!pd[username]) pd[username] = {};
+          pd[username].paused = true;
+          changed = true;
+        }
+      });
+      if (changed) await savePatientData(env, pd);
+    } catch (e) {
+      console.error('Cron error:', e);
+    }
+  },
+
   async fetch(request, env) {
     const url = new URL(request.url);
     const path = url.pathname;

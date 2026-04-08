@@ -13,5 +13,8 @@ id = "a43e06036bc54509bd9ae6d9bd37b14c"
 # META_PAGE_TOKEN     : 페이지 액세스 토큰
 # CLAUDE_API_KEY      : Anthropic API 키
 
+[triggers]
+crons = ["0 * * * *"]
+
 [vars]
 BOT_ENABLED = "true"
