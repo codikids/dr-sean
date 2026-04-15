@@ -18,16 +18,44 @@ export function verifyWebhook(request, env) {
   return new Response('Forbidden', { status: 403 });
 }
 
+/** Meta HMAC-SHA256 서명 검증 */
+async function verifySignature(rawBody, signatureHeader, appSecret) {
+  if (!signatureHeader || !appSecret) return false;
+  const expected = signatureHeader.startsWith('sha256=') ? signatureHeader.slice(7) : signatureHeader;
+  const key = await crypto.subtle.importKey(
+    'raw', new TextEncoder().encode(appSecret),
+    { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(rawBody));
+  const actual = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
+  // 타이밍 공격 방지용 상수시간 비교
+  if (actual.length !== expected.length) return false;
+  let diff = 0;
+  for (let i = 0; i < actual.length; i++) diff |= actual.charCodeAt(i) ^ expected.charCodeAt(i);
+  return diff === 0;
+}
+
 /** POST /webhook — DM 수신 처리 */
 export async function handleWebhook(request, env) {
   try {
+    // 서명 검증 — Meta App Secret 설정돼 있으면 필수
+    const rawBody = await request.text();
+    if (env.META_APP_SECRET) {
+      const sig = request.headers.get('x-hub-signature-256');
+      const ok = await verifySignature(rawBody, sig, env.META_APP_SECRET);
+      if (!ok) {
+        console.warn('Webhook signature verification failed');
+        return new Response('Forbidden', { status: 403 });
+      }
+    }
+
     // 봇 ON/OFF 확인
     const enabled = await env.KV.get('bot_enabled');
     if (enabled === 'false') {
       return new Response('OK', { status: 200 });
     }
 
-    const body = await request.json();
+    const body = JSON.parse(rawBody);
 
     // Instagram 이벤트만 처리
     if (body.object !== 'instagram') {
@@ -61,7 +89,7 @@ export async function handleWebhook(request, env) {
 
         // 팔로우 안 한 사람 → 팔로우 안내 + "팔로우 완료" 버튼
         if (!profile.is_follower) {
-          await sendMessage(senderId, "Hey! To get a free personalized skin consultation, please follow @dr.skinsource first 😊\n\nOnce you follow, I can help with skincare advice, treatment recommendations, and more!", env);
+          await sendMessage(senderId, "Hey there! 😊 Quick heads-up — Instagram only shows my replies at the top of your inbox if you're following me. Mind giving @dr.skinsource a follow? That way you'll actually see my messages and we can chat properly!", env);
           await sendMessage(senderId, "Tap below once you've followed!", env, ["I've followed! ✨"]);
           if (!isTestUser) await logMessage(env, { senderId, username: profile.username || '', received: text, replied: '[Follow request - not following]', timestamp });
           continue;

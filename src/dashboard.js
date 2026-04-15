@@ -22,24 +22,39 @@ export function serveDashboard(env) {
 
 /** 대시보드 API 라우터 */
 export async function handleDashboardAPI(request, env, path) {
+  // 대시보드와 같은 오리진에서만 허용 (타 사이트 차단)
+  const origin = request.headers.get('Origin') || '';
+  const selfOrigin = new URL(request.url).origin;
   const cors = {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': origin === selfOrigin ? origin : selfOrigin,
     'Access-Control-Allow-Methods': 'GET,POST,PUT,OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Vary': 'Origin',
   };
 
   if (request.method === 'OPTIONS') {
     return new Response(null, { headers: cors });
   }
 
+  const dashPass = await env.KV.get('dashboard_password');
+
+  // POST /api/login — 비밀번호 확인 (인증 전 허용)
+  if (path === '/api/login' && request.method === 'POST') {
+    try {
+      const { password } = await request.json();
+      if (dashPass && password === dashPass) {
+        return json({ ok: true, token: dashPass }, 200, cors);
+      }
+      return json({ ok: false, error: 'Invalid password' }, 401, cors);
+    } catch {
+      return json({ ok: false }, 400, cors);
+    }
+  }
+
   // 간단한 인증 (대시보드 비밀번호)
   const authHeader = request.headers.get('Authorization');
-  const dashPass = await env.KV.get('dashboard_password');
   if (dashPass && authHeader !== `Bearer ${dashPass}`) {
-    // 비밀번호 미설정 시 인증 스킵 (초기 셋업용)
-    if (dashPass) {
-      return json({ error: 'Unauthorized' }, 401, cors);
-    }
+    return json({ error: 'Unauthorized' }, 401, cors);
   }
 
   try {

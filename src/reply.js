@@ -42,6 +42,110 @@ function getFlag(country) {
   return '🌏';
 }
 
+const FUZZY_COUNTRY_MAP = {
+  'usa':'United States','america':'United States','united states':'United States',
+  'singapore':'Singapore','australia':'Australia','canada':'Canada',
+  'china':'China','japan':'Japan','korea':'Korea','thailand':'Thailand','vietnam':'Vietnam',
+  'taiwan':'Taiwan','hong kong':'Hong Kong','indonesia':'Indonesia','malaysia':'Malaysia',
+  'philippines':'Philippines','myanmar':'Myanmar','india':'India','uk':'UK','united kingdom':'UK','britain':'UK','england':'UK','scotland':'UK',
+  'russia':'Russia','germany':'Germany','france':'France','brazil':'Brazil','mexico':'Mexico',
+  'netherlands':'Netherlands','italy':'Italy','spain':'Spain','switzerland':'Switzerland',
+  'new zealand':'New Zealand','turkey':'Turkey','saudi':'Saudi Arabia','uae':'UAE','dubai':'UAE',
+  'egypt':'Egypt','nigeria':'Nigeria','colombia':'Colombia','argentina':'Argentina',
+  'pakistan':'Pakistan','bangladesh':'Bangladesh','nepal':'Nepal','cambodia':'Cambodia',
+  'laos':'Laos','sri lanka':'Sri Lanka','israel':'Israel','sweden':'Sweden','norway':'Norway',
+  'greece':'Greece','poland':'Poland','portugal':'Portugal','austria':'Austria',
+  'belgium':'Belgium','denmark':'Denmark','finland':'Finland','ireland':'Ireland',
+  'czech':'Czech Republic','hungary':'Hungary','romania':'Romania','ukraine':'Ukraine',
+  'south africa':'South Africa','kenya':'Kenya','morocco':'Morocco','ethiopia':'Ethiopia',
+  'qatar':'Qatar','kuwait':'Kuwait','bahrain':'Bahrain','oman':'Oman','jordan':'Jordan',
+  'lebanon':'Lebanon','iran':'Iran','iraq':'Iraq','mongolia':'Mongolia',
+  'peru':'Peru','chile':'Chile','venezuela':'Venezuela','ecuador':'Ecuador',
+  'uzbekistan':'Uzbekistan','kazakhstan':'Kazakhstan',
+  // 철자 변형 / 대체 이름 / 자국어 표기
+  'turkiye':'Turkey','türkiye':'Turkey','turkei':'Turkey','türkei':'Turkey',
+  'deutschland':'Germany','nippon':'Japan','nihon':'Japan',
+  'españa':'Spain','espana':'Spain','italia':'Italy','brasil':'Brazil','méxico':'Mexico',
+  'corea':'Korea','koria':'Korea','south korea':'Korea','republic of korea':'Korea',
+  'phillipines':'Philippines','philipines':'Philippines','philipine':'Philippines','pilipinas':'Philippines',
+  'singapour':'Singapore','singapor':'Singapore',
+  'indonisia':'Indonesia','indonesa':'Indonesia',
+  'malysia':'Malaysia','malasia':'Malaysia','malaisia':'Malaysia',
+  'thialand':'Thailand','tailand':'Thailand','thiland':'Thailand',
+  'vietnum':'Vietnam','viet nam':'Vietnam','vietname':'Vietnam',
+  'japon':'Japan','japun':'Japan',
+  'chinna':'China','chinaa':'China',
+  'taiwain':'Taiwan','tawain':'Taiwan','taiwn':'Taiwan',
+  'hongkong':'Hong Kong',
+  'myanmar':'Myanmar','burma':'Myanmar',
+  'indea':'India','indija':'India',
+  'bangaldesh':'Bangladesh','banglades':'Bangladesh',
+  'pakistaan':'Pakistan','pakistn':'Pakistan',
+  'srilanka':'Sri Lanka','sri-lanka':'Sri Lanka',
+  'russa':'Russia','rossiya':'Russia',
+  'germny':'Germany','germeny':'Germany','germanny':'Germany',
+  'frence':'France','franse':'France',
+  'nederland':'Netherlands','holland':'Netherlands',
+  'united arab emirates':'UAE','u.a.e':'UAE','emirates':'UAE',
+  'saudi arabia':'Saudi Arabia','ksa':'Saudi Arabia',
+  'great britain':'UK','u.k.':'UK','u.k':'UK',
+  'united states of america':'United States','u.s.a':'United States','u.s':'United States','u.s.':'United States',
+};
+// 도시 → 국가 매핑 (사용자가 도시명만 적는 경우)
+const CITY_TO_COUNTRY = {
+  'london':'UK','manchester':'UK','liverpool':'UK','edinburgh':'UK',
+  'new york':'United States','nyc':'United States','los angeles':'United States','la':'United States','san francisco':'United States','chicago':'United States','boston':'United States','miami':'United States','seattle':'United States',
+  'paris':'France','lyon':'France','marseille':'France',
+  'berlin':'Germany','munich':'Germany','frankfurt':'Germany','hamburg':'Germany',
+  'tokyo':'Japan','osaka':'Japan','kyoto':'Japan',
+  'seoul':'Korea','busan':'Korea',
+  'beijing':'China','shanghai':'China','shenzhen':'China','guangzhou':'China',
+  'bangkok':'Thailand','phuket':'Thailand',
+  'jakarta':'Indonesia','bali':'Indonesia',
+  'manila':'Philippines','cebu':'Philippines',
+  'kuala lumpur':'Malaysia','kl':'Malaysia',
+  'hanoi':'Vietnam','ho chi minh':'Vietnam','saigon':'Vietnam',
+  'sydney':'Australia','melbourne':'Australia','brisbane':'Australia',
+  'toronto':'Canada','vancouver':'Canada','montreal':'Canada',
+  'moscow':'Russia','st petersburg':'Russia',
+  'mumbai':'India','delhi':'India','bangalore':'India',
+  'dubai':'UAE','abu dhabi':'UAE',
+  'istanbul':'Turkey','ankara':'Turkey',
+  'madrid':'Spain','barcelona':'Spain',
+  'rome':'Italy','milan':'Italy',
+  'athens':'Greece','thessaloniki':'Greece',
+  'lisbon':'Portugal','porto':'Portugal',
+  'amsterdam':'Netherlands','rotterdam':'Netherlands',
+  'zurich':'Switzerland','geneva':'Switzerland',
+  'vienna':'Austria','prague':'Czech Republic','warsaw':'Poland','budapest':'Hungary',
+  'stockholm':'Sweden','oslo':'Norway','copenhagen':'Denmark','helsinki':'Finland',
+  'cairo':'Egypt','lagos':'Nigeria','nairobi':'Kenya','casablanca':'Morocco',
+  'mexico city':'Mexico','buenos aires':'Argentina','sao paulo':'Brazil','rio':'Brazil','bogota':'Colombia','lima':'Peru','santiago':'Chile',
+  'tel aviv':'Israel','jerusalem':'Israel',
+  'karachi':'Pakistan','lahore':'Pakistan','dhaka':'Bangladesh','kathmandu':'Nepal',
+  'doha':'Qatar','riyadh':'Saudi Arabia','kuwait city':'Kuwait',
+  'tehran':'Iran','baghdad':'Iraq','beirut':'Lebanon','amman':'Jordan',
+};
+const VISIT_VERBS_RE = /\b(coming to|come to|visit(?:ing)?|travel(?:ing|ling)? to|going to|go to|trip to|fly(?:ing)? to|flight to|vacation (?:in|to)|heading to|plan(?:ning)? to (?:go|visit)|want to (?:go|visit)|would like to (?:go|visit))\s+$/i;
+
+/** 자유 텍스트에서 거주국 추출. visit 맥락은 배제, 여러 후보 있으면 가장 먼저 등장한 non-visit 선택 */
+function extractCountryFromText(text) {
+  const normalized = text.toLowerCase();
+  const combined = { ...FUZZY_COUNTRY_MAP, ...CITY_TO_COUNTRY };
+  let best = null; // { val, index, isVisit }
+  for (const [key, val] of Object.entries(combined)) {
+    const idx = normalized.indexOf(key);
+    if (idx === -1) continue;
+    const before = text.slice(0, idx);
+    const isVisit = VISIT_VERBS_RE.test(before);
+    if (!best) { best = { val, index: idx, isVisit }; continue; }
+    if (best.isVisit && !isVisit) { best = { val, index: idx, isVisit }; continue; }
+    if (best.isVisit === isVisit && idx < best.index) { best = { val, index: idx, isVisit }; }
+  }
+  if (best && !best.isVisit) return best.val;
+  return null;
+}
+
 /** 메인 답변 생성 — metadata도 함께 반환 */
 export async function generateReply(text, senderId, env, username) {
   const config = await getConfig(env);
@@ -86,12 +190,14 @@ export async function generateReply(text, senderId, env, username) {
       ]);
       return { reply: retryMsg, metadata };
     }
-    const flag = getFlag(typedCountry);
-    metadata.country = `${flag} ${typedCountry}`;
+    // 도시/국가 fuzzy 추출 — "manila" → Philippines, "London" → UK 등
+    const extracted = extractCountryFromText(typedCountry) || typedCountry;
+    const flag = getFlag(extracted);
+    metadata.country = `${flag} ${extracted}`;
     await env.KV.put(`country:${senderId}`, metadata.country, { expirationTtl: 60 * 60 * 24 * 90 });
     await env.KV.delete(`awaiting_country:${senderId}`);
     const CONCERN_OPTIONS = config.concernOptions || DEFAULT_CONCERNS;
-    const countryReply = `Got it, ${flag} ${typedCountry}! Great to connect with you.`;
+    const countryReply = `Got it, ${flag} ${extracted}! Great to connect with you.`;
     const purposeAsk = config.msgPurposeAsk || "What brings you here today? Tap below!";
     await saveConversation(env, senderId, [
       ...conversation,
@@ -107,23 +213,8 @@ export async function generateReply(text, senderId, env, username) {
     // Quick Reply 정확 매칭 또는 텍스트 입력 유연 매칭
     let matched = COUNTRY_MAP[normalized];
     if (!matched) {
-      // 유연 매칭 — 텍스트에 국가명이 포함되어 있으면 인식
-      const FUZZY_MAP = {
-        'usa':'United States','america':'United States','us':'United States','united states':'United States',
-        'singapore':'Singapore','australia':'Australia','canada':'Canada',
-        'china':'China','japan':'Japan','korea':'Korea','thailand':'Thailand','vietnam':'Vietnam',
-        'taiwan':'Taiwan','hong kong':'Hong Kong','indonesia':'Indonesia','malaysia':'Malaysia',
-        'philippines':'Philippines','myanmar':'Myanmar','india':'India','uk':'UK','united kingdom':'UK',
-        'russia':'Russia','germany':'Germany','france':'France','brazil':'Brazil','mexico':'Mexico',
-        'netherlands':'Netherlands','italy':'Italy','spain':'Spain','switzerland':'Switzerland',
-        'new zealand':'New Zealand','turkey':'Turkey','saudi':'Saudi Arabia','uae':'UAE','dubai':'UAE',
-        'egypt':'Egypt','nigeria':'Nigeria','colombia':'Colombia','argentina':'Argentina',
-        'pakistan':'Pakistan','bangladesh':'Bangladesh','nepal':'Nepal','cambodia':'Cambodia',
-        'laos':'Laos','sri lanka':'Sri Lanka','israel':'Israel','sweden':'Sweden','norway':'Norway',
-      };
-      for (const [key, val] of Object.entries(FUZZY_MAP)) {
-        if (normalized.includes(key)) { matched = val; break; }
-      }
+      // 헬퍼 사용 — visit 동사 뒤 국가명 배제 + 도시/철자변형 포함
+      matched = extractCountryFromText(text);
     }
     // "Others" 선택 시 → 직접 입력 요청
     if (matched === 'Others') {
@@ -207,16 +298,16 @@ export async function generateReply(text, senderId, env, username) {
       // matched found via fuzzy
       await env.KV.put(`purpose:${senderId}`, matched, { expirationTtl: 60 * 60 * 24 * 90 });
       if (matched === 'business') {
-        const bizReply = config.msgBusinessReply || "Thanks for reaching out! For business inquiries, please hold on — I'll get back to you personally soon 🙏";
+        const bizReply = config.msgBusinessReply || "Thanks for reaching out! For business inquiries, please email drsean.skin@gmail.com — Dr. Sean will personally get back to you there 🙏";
         metadata.tag = 'business';
-        // 봇 자동 Pause — 이후 AI 답변 차단, 직접 응대
-        if(username){const pd=await getPatientData(env);if(!pd[username])pd[username]={};pd[username].paused=true;await savePatientData(env,pd);}
+        await markWantsDrSean(env, username);
         await saveConversation(env, senderId, [...conversation, { role: 'user', text }, { role: 'assistant', text: bizReply }]);
         return { reply: bizReply, metadata };
       }
       if (matched === 'booking') {
-        const bookReply = config.msgBookingReply || "For booking inquiries, I'll be at AB Clinic starting May 25th! I'll share the reservation details soon.\n\nIf you have any skin-related questions, feel free to ask anytime!";
+        const bookReply = config.msgBookingReply || "Hey! So for bookings — I'm actually moving to AB Clinic starting in June, so the reservation system is going to change. I'll announce all the details once everything is set up!\n\nMake sure you're following so you don't miss the update. In the meantime, if you have any skin questions, feel free to ask! I'm happy to help right here";
         metadata.tag = 'booking';
+        await markWantsDrSean(env, username);
         await saveConversation(env, senderId, [...conversation, { role: 'user', text }, { role: 'assistant', text: bookReply }]);
         return { reply: bookReply, metadata };
       }
@@ -229,14 +320,16 @@ export async function generateReply(text, senderId, env, username) {
     // 정확 매칭
     await env.KV.put(`purpose:${senderId}`, purposeMatch, { expirationTtl: 60 * 60 * 24 * 90 });
     if (purposeMatch === 'business') {
-      const bizReply = config.msgBusinessReply || "Thanks for reaching out! For business inquiries, please hold on — I'll get back to you personally soon 🙏";
+      const bizReply = config.msgBusinessReply || "Thanks for reaching out! For business inquiries, please email drsean.skin@gmail.com — Dr. Sean will personally get back to you there 🙏";
       metadata.tag = 'business';
+      await markWantsDrSean(env, username);
       await saveConversation(env, senderId, [...conversation, { role: 'user', text }, { role: 'assistant', text: bizReply }]);
       return { reply: bizReply, metadata };
     }
     if (purposeMatch === 'booking') {
-      const bookReply = config.msgBookingReply || "For booking inquiries, I'll be at AB Clinic starting May 25th! I'll share the reservation details soon.\n\nIf you have any skin-related questions, feel free to ask anytime!";
+      const bookReply = config.msgBookingReply || "Hey! So for bookings — I'm actually moving to AB Clinic starting in June, so the reservation system is going to change. I'll announce all the details once everything is set up!\n\nMake sure you're following so you don't miss the update. In the meantime, if you have any skin questions, feel free to ask! I'm happy to help right here";
       metadata.tag = 'booking';
+      await markWantsDrSean(env, username);
       await saveConversation(env, senderId, [...conversation, { role: 'user', text }, { role: 'assistant', text: bookReply }]);
       return { reply: bookReply, metadata };
     }
@@ -289,12 +382,11 @@ export async function generateReply(text, senderId, env, username) {
     const displayName = matchedTag === 'others' ? typed : matchedTag;
     await env.KV.put(`concern:${senderId}`, displayName, { expirationTtl: 60 * 60 * 24 * 90 });
     await env.KV.delete(`awaiting_concern:${senderId}`);
-    let concernReply = getConcernFollowUp(displayName);
-    const videoLink = await findFeedVideo(env, displayName) || await findFeedVideo(env, typed);
-    if (videoLink) concernReply += "\n\nbtw check out this video I made about this! 👇\n" + videoLink;
-    const visitMsg = "For the full picture, nothing beats an in-person consultation! Come see Dr. Sean at AB Clinic and we'll figure out the perfect approach for you.";
-    await saveConversation(env, senderId, [...conversation, { role: 'user', text }, { role: 'assistant', text: concernReply }, { role: 'assistant', text: visitMsg }]);
-    return { reply: concernReply, metadata, followUp: { text: visitMsg } };
+    const videoLink = await findFeedVideo(env, displayName) || await findFeedVideo(env, typed) || await getLatestFeedVideo(env);
+    const concernReply = buildConcernWaitReply(displayName, videoLink, config);
+    await markWantsDrSean(env, username);
+    await saveConversation(env, senderId, [...conversation, { role: 'user', text }, { role: 'assistant', text: concernReply }]);
+    return { reply: concernReply, metadata };
   }
 
   if (hasCountry && (hasPurpose === 'skin' || hasPurpose === 'booking') && !hasConcern) {
@@ -321,12 +413,11 @@ export async function generateReply(text, senderId, env, username) {
     if (matched) {
       metadata.tag = matched.toLowerCase().replace(/\s+/g, '-');
       await env.KV.put(`concern:${senderId}`, matched, { expirationTtl: 60 * 60 * 24 * 90 });
-      let concernReply = getConcernFollowUp(matched);
-      const videoLink = await findFeedVideo(env, matched);
-      if (videoLink) concernReply += "\n\nbtw check out this video I made about " + matched.toLowerCase() + "! 👇\n" + videoLink;
-      const visitMsg = "For the full picture, nothing beats an in-person consultation! Come see Dr. Sean at AB Clinic and we'll figure out the perfect approach for you.";
-      await saveConversation(env, senderId, [...conversation, { role: 'user', text }, { role: 'assistant', text: concernReply }, { role: 'assistant', text: visitMsg }]);
-      return { reply: concernReply, metadata, followUp: { text: visitMsg } };
+      const videoLink = await findFeedVideo(env, matched) || await getLatestFeedVideo(env);
+      const concernReply = buildConcernWaitReply(matched, videoLink, config);
+      await markWantsDrSean(env, username);
+      await saveConversation(env, senderId, [...conversation, { role: 'user', text }, { role: 'assistant', text: concernReply }]);
+      return { reply: concernReply, metadata };
     }
 
     // 매칭 안 됨 — concern으로 직접 저장
@@ -448,14 +539,20 @@ export async function generateReply(text, senderId, env, username) {
     { role: 'assistant', text: cleanReply },
   ]);
 
-  // ── D) Instagram 피드 매칭 — concern과 관련된 영상 검색 ──
+  // ── D) Instagram 피드 매칭 — concern과 관련된 영상 검색 (중복 방지) ──
   let feedLink = '';
   try {
     const cachedStats = await env.KV.get('cache:ig_stats', 'json');
     if (cachedStats && cachedStats.posts && cachedStats.posts.length) {
+      // 이미 보낸 영상 링크 확인
+      const sentLinks = new Set(conversation.filter(m => m.role === 'assistant' && m.text).flatMap(m => {
+        const urls = m.text.match(/https:\/\/www\.instagram\.com\/reel\/[\w-]+\/?/g);
+        return urls || [];
+      }));
       const searchTerms = [metadata.tag, text.toLowerCase()].filter(Boolean);
       const matchedPost = cachedStats.posts.find(p => {
         const caption = (p.caption || '').toLowerCase();
+        if (sentLinks.has(p.permalink)) return false; // 이미 보낸 영상 스킵
         return searchTerms.some(t => t && caption.includes(t));
       });
       if (matchedPost && matchedPost.permalink) {
@@ -464,17 +561,7 @@ export async function generateReply(text, senderId, env, username) {
     }
   } catch(e) {}
 
-  // 병원 내방 안내 — 별도 메시지로 전송
-  const visitMessages = [
-    "For a more detailed consultation, I'd love to see you in person at AB Clinic! We can go over everything together and find the best plan for you.",
-    "If you'd like a proper assessment, come visit me at AB Clinic! I can explain everything in much more detail face to face.",
-    "Want to dive deeper into this? Swing by AB Clinic and we'll get you sorted with a personalized plan!",
-    "For the full picture, nothing beats an in-person consultation! Come see me at AB Clinic and we'll figure out the perfect approach for you.",
-    "I can go into way more detail when I see you in person! Let's set something up at AB Clinic.",
-  ];
-  const visitMsg = visitMessages[Math.floor(Math.random() * visitMessages.length)];
-
-  return { reply: cleanReply + feedLink, metadata, followUp: { text: visitMsg } };
+  return { reply: cleanReply + feedLink, metadata };
 }
 
 /** Concern별 맞춤 후속 질문 */
@@ -492,20 +579,36 @@ async function findFeedVideo(env, keyword) {
   } catch(e) { return null; }
 }
 
-function getConcernFollowUp(concern) {
-  const c = concern.toLowerCase();
-  const followUps = {
-    'botox': "Botox — nice! Which area are you thinking about? Forehead, crow's feet, or somewhere else? And have you had it done before?",
-    'filler': "Filler — got it! What area are you looking to treat? Lips, cheeks, nasolabial folds? Let me know if this is your first time too!",
-    'lifting': "Lifting — great choice! Is it more about skin sagging or wanting a sharper jawline? And roughly how long has it been bothering you?",
-    'anti-aging': "Anti-aging — totally get it! What's bugging you the most right now? Fine lines, wrinkles, or just overall skin texture? Any specific area?",
-    'acne': "Acne — I deal with this a lot! Is it mostly on your face? How long have you been dealing with it, and have you tried any treatments so far?",
-    'skincare': "Skincare — love it! What's your current routine like? And what's the main thing you wanna improve — texture, glow, hydration?",
-  };
-  for (const [key, reply] of Object.entries(followUps)) {
-    if (c.includes(key)) return reply;
-  }
-  return `${concern} — got it! Tell me more about what's going on. How long has it been an issue, and have you tried anything for it so far?`;
+/** 가장 최근 피드 영상/포스트 링크 (매칭 실패 시 폴백) */
+async function getLatestFeedVideo(env) {
+  try {
+    const cached = await env.KV.get('cache:ig_stats', 'json');
+    if (!cached || !cached.posts || !cached.posts.length) return null;
+    const latest = cached.posts[0];
+    return latest && latest.permalink ? latest.permalink : null;
+  } catch(e) { return null; }
+}
+
+/** Wants Dr. Sean 리스트 등록 + 봇 pause */
+async function markWantsDrSean(env, username) {
+  if (!username) return;
+  const pd = await getPatientData(env);
+  if (!pd[username]) pd[username] = {};
+  pd[username].paused = true;
+  pd[username].humanRequest = true;
+  pd[username].humanRequestAt = new Date().toISOString();
+  await savePatientData(env, pd);
+}
+
+/** Concern 선택 후 보낼 메시지 생성 — 영상 + Dr.Sean 대기 안내 */
+function buildConcernWaitReply(concern, videoLink, config) {
+  const intro = `Got it — ${concern.toLowerCase()}! 💬`;
+  const videoPart = videoLink
+    ? `\n\nI actually have a video about this — take a look while you wait 👇\n${videoLink}`
+    : '';
+  const waitMsg = config.msgConcernWait
+    || "\n\nDr. Sean will personally reply as soon as he's available — hang tight! 🙏";
+  return intro + videoPart + waitMsg;
 }
 
 /** 키워드 매칭 */
@@ -636,7 +739,7 @@ BAD: "I appreciate you sharing that with me. Here are some suggestions..."
 4. Never diagnose from descriptions alone. "it sounds like it could be..." is fine. "you have..." is not.
 5. Serious stuff (weird moles, infections, severe reactions) — drop the casual tone slightly and tell them to see someone ASAP.
 6. Product recs: stick to stuff that actually works. Sunscreen, retinoids, niacinamide, ceramides, gentle cleansers.
-7. Booking: AB Clinic reservation system after May 25th.
+7. Booking: You're at Fine Clinic through April 2026, moving to AB Clinic starting June 1st 2026. During May you're transitioning and can't see patients. Both clinics have great doctors — recommend them. The new reservation system details will be announced soon.
 8. If someone asks about specific Botox units, dosage, or which Botox brand you use — tell them it varies by clinic and by person. Every clinic carries different products and the amount depends on the individual. They'd need to come in for that kind of detail. Keep it casual: "that really depends on the person and what we have in stock — best to sort that out when you come in!"
 9. Same for filler amounts (cc/ml), specific product brands (Juvederm, Restylane, etc.), laser device names, or any clinic-specific equipment questions — redirect to in-person consultation. You genuinely can't answer these accurately over DM.`;
 
@@ -659,12 +762,22 @@ Always naturally weave in region-specific insight.` : '';
 ${countrySection}
 
 ## Your Current Situation
-- Starting May 25th, you'll be working at AB Clinic (Seoul, Seocho-gu, BLOCK77 3F).
-- Appointment bookings will open after May 25th through AB Clinic's reservation system.
-- CRITICAL: Even though bookings aren't open yet, you MUST still provide full skin consultations over DM. Answer their questions about treatments, recommend procedures, explain what they need. Do NOT just say "bookings start May 25th" — that's lazy and unhelpful. Give them real medical advice first, THEN mention the clinic visit as a follow-up.
+- ALL your clinics are in Seoul, Korea. Fine Clinic and AB Clinic are both in Seoul. NEVER confuse the patient's country with the clinic location.
+- Through April 2026, you're working at Fine Clinic (Seoul).
+- Starting June 1st 2026, you'll be at AB Clinic (Seoul).
+- Your booking/reservation system opens June 1st at AB Clinic — NOT before. There is NO way to book until June 1st.
+- During May 2026, you're in transition and can't see patients in person. Both Fine Clinic and AB Clinic have excellent doctors — if someone wants to visit during May, recommend either clinic.
+- BOOKING RULES (CRITICAL):
+  - You CANNOT book, reserve, or schedule anything. Not through DM, not through any system. Period.
+  - NEVER say "reserve a slot with me through DM" or "DM me to book" — you have NO booking capability.
+  - When someone asks about booking: tell them the reservation system opens June 1st, encourage them to follow for the announcement, and offer to help with skin questions now.
+  - Do NOT ask for details (date, treatment, location) as if you can arrange a visit.
+  - Do NOT tell people to "come visit" or "book at Fine Clinic".
+- CRITICAL: You MUST still provide full skin consultations over DM regardless of the clinic transition. Answer their questions about treatments, recommend procedures, explain what they need. Do NOT just say "bookings start June 1st" — that's lazy and unhelpful. Give them real medical advice first, THEN mention the booking situation if relevant.
 - If someone asks about treatments, procedures, or skin concerns — ANSWER THEM with specific, helpful advice. The booking info is secondary.
 
-## Clinic Info (after May 25th)
+## Clinic Info
+- From June 1st: AB Clinic (booking system opens June 1st)
 - Clinic Name: ${config.clinicName}
 - Address: ${config.address}
 - Hours: ${config.hours}
@@ -687,7 +800,11 @@ You MUST start EVERY reply with a metadata line in this exact format, then a bla
 [TAG: category | COUNTRY: country_if_known]
 
 - TAG: a specific English keyword for their skin concern or desired procedure. Be as specific as possible. Examples: acne, scar, pigmentation, whitening, botox, filler, wrinkle, anti-aging, lifting, pore, redness, rhinoplasty, jawline, facelift, eyelid, lip, laser, peel, thread-lift, hair, liposuction, skincare, consultation. Use "none" if the message has absolutely nothing to do with skin, beauty, or medical procedures.
-- COUNTRY: the country if you know it from the conversation, otherwise "unknown"
+- COUNTRY: the patient's HOME country (where they actually live), NOT where they plan to travel.
+  - Count as home country: "I'm from X" / "I live in X" / "based in X" / "I'm in X right now" / explicit statement of residence.
+  - Do NOT count as home country: "coming to X" / "visiting X" / "going to X" / "trip to X" / "in May we'll be in X" — these are travel destinations.
+  - If only a travel destination is mentioned and the home country is unclear, use "unknown".
+  - Remember: Dr. Sean's clinics are in Seoul, so most patients mentioning Korea are planning to VISIT Korea, not living there.
 - CRITICAL: If the patient mentions ANY skin concern, treatment, procedure, or beauty topic, you MUST use a specific tag — NEVER use "general" for these. The tag is used for patient funnel tracking.
 
 Example:

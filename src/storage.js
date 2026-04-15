@@ -14,8 +14,11 @@ const DEFAULT_CONFIG = {
   booking: '100% appointment-only (DM or call to book)',
   treatments: '',
   customRules: '',
-  greeting: "Hey there! I'm Melia, Dr. Sean's AI assistant 🤖✨\n\nBefore we get started, I just need a couple of quick details from you — once you complete the steps, I can jump right into your consultation!\n\nLet's go 👇",
+  greeting: "Hey there! I'm Melia, Dr. Sean's AI assistant 🤖✨\n\nBefore we get started, I just need a couple of quick details from you — once you complete the steps, Dr. Sean will personally take over and reply to you!\n\nLet's go 👇",
   fallback: "Hey, so sorry about that! We're having a little trouble right now — mind trying again in a bit? 🙏",
+  msgBusinessReply: "Thanks for reaching out! For business inquiries, please email drsean.skin@gmail.com — Dr. Sean will personally get back to you there 🙏",
+  msgBookingReply: "Hey! So for bookings — I'm actually moving to AB Clinic starting in June, so the reservation system is going to change. I'll announce all the details once everything is set up!\n\nMake sure you're following so you don't miss the update. In the meantime, if you have any skin questions, feel free to ask! I'm happy to help right here",
+  msgConcernWait: "\n\nDr. Sean will personally reply as soon as he's available — hang tight! 🙏",
   keywords: [
     {
       triggers: ['location', 'address', 'where', 'directions', 'find you', 'located'],

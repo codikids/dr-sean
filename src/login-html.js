@@ -79,22 +79,35 @@ export const LOGIN_HTML = `<!DOCTYPE html>
   <div class="sub">Skin Consultation Platform</div>
   <form onsubmit="return doLogin(event)">
     <div class="field"><label>User</label><select id="loginUser"><option value="">Select user</option><option value="sihyun">Sihyun Kim</option><option value="minkyung">Minkyung Jung</option></select></div>
-    <div class="field"><label>PIN</label><input type="password" id="loginPin" inputmode="numeric" maxlength="4" placeholder="4-digit PIN"></div>
+    <div class="field"><label>Password</label><input type="password" id="loginPw" placeholder="Dashboard password" autocomplete="current-password"></div>
     <div class="error" id="loginError"></div>
-    <button type="submit" class="login-btn">Login</button>
+    <button type="submit" class="login-btn" id="loginBtn">Login</button>
   </form>
 </div>
 <script>
-if(localStorage.getItem('drsean_user'))location.replace('/dashboard');
-const U={sihyun:{pin:'0000',name:'Sihyun Kim'},minkyung:{pin:'0000',name:'Minkyung Jung'}};
-function doLogin(e){
+if(localStorage.getItem('drsean_auth'))location.replace('/dashboard');
+const U={sihyun:'Sihyun Kim',minkyung:'Minkyung Jung'};
+async function doLogin(e){
   e.preventDefault();
-  const uid=document.getElementById('loginUser').value,pin=document.getElementById('loginPin').value,err=document.getElementById('loginError');
+  const uid=document.getElementById('loginUser').value,pw=document.getElementById('loginPw').value,err=document.getElementById('loginError'),btn=document.getElementById('loginBtn');
   if(!uid){err.textContent='Please select a user.';return false;}
-  if(!pin){err.textContent='Please enter your PIN.';return false;}
-  const u=U[uid];
-  if(u&&u.pin===pin){localStorage.setItem('drsean_user',uid);localStorage.setItem('drsean_name',u.name);location.replace('/dashboard');}
-  else{err.textContent='Incorrect PIN.';const p=document.getElementById('loginPin');p.value='';p.classList.add('input-error');p.addEventListener('input',()=>p.classList.remove('input-error'),{once:true});}
+  if(!pw){err.textContent='Please enter the password.';return false;}
+  btn.disabled=true;btn.textContent='Checking…';err.textContent='';
+  try{
+    const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});
+    const d=await r.json();
+    if(r.ok&&d.ok){
+      localStorage.setItem('drsean_auth',d.token);
+      localStorage.setItem('drsean_user',uid);
+      localStorage.setItem('drsean_name',U[uid]||uid);
+      location.replace('/dashboard');
+    } else {
+      err.textContent='Incorrect password.';
+      const p=document.getElementById('loginPw');p.value='';p.classList.add('input-error');
+      p.addEventListener('input',()=>p.classList.remove('input-error'),{once:true});
+    }
+  }catch(ex){err.textContent='Network error. Please try again.';}
+  btn.disabled=false;btn.textContent='Login';
   return false;
 }
 <\/script>

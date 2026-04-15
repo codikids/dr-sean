@@ -850,6 +850,28 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
 <div class="toast" id="toast"></div>
 
 <script>
+// ── 인증 체크 + fetch 인터셉터 ──
+(function(){
+  const auth = localStorage.getItem('drsean_auth');
+  if (!auth) { location.replace('/'); return; }
+  const origFetch = window.fetch;
+  window.fetch = function(input, init) {
+    init = init || {};
+    const url = typeof input === 'string' ? input : (input && input.url) || '';
+    if (url.startsWith('/api/')) {
+      init.headers = new Headers(init.headers || {});
+      if (!init.headers.has('Authorization')) init.headers.set('Authorization', 'Bearer ' + auth);
+    }
+    return origFetch(input, init).then(r => {
+      if (r.status === 401 && url.startsWith('/api/')) {
+        localStorage.removeItem('drsean_auth');
+        location.replace('/');
+      }
+      return r;
+    });
+  };
+})();
+
 let config = {};
 const CC = ['#5B8DEF','#3DD68C','#F0B24A','#F06464','#4AC8E8','#A78BFA','#FB7185','#34D399','#FBBF24','#60A5FA','#C084FC','#F472B6'];
 
@@ -869,7 +891,7 @@ const DEFAULT_PROMPT = \`You ARE the doctor — a 30-something American dermatol
 4. NEVER provide a definitive diagnosis from photos or descriptions alone. Always recommend an in-person visit for confirmation.
 5. For anything serious (suspicious moles, infections, allergic reactions), strongly urge them to see a dermatologist in person ASAP.
 6. When recommending products, stick to well-known, evidence-based options (e.g. sunscreen, retinoids, gentle cleansers, moisturizers with ceramides).
-7. For booking: direct them to AB Clinic's reservation system (available after May 25th).\`;
+7. For booking: You're at Fine Clinic through April 2026, moving to AB Clinic starting June 1st 2026. Booking system also opens June 1st — NOT before. During May you're transitioning. Both clinics have great doctors — recommend them.\`;
 
 function toggleSetting(header) {
   const section = header.parentElement;
@@ -1328,7 +1350,7 @@ async function loadConfig(){
   document.getElementById('msgCountryAsk').value=config.msgCountryAsk||'Quick question — where are you based? This helps me give you more accurate advice for your skin and climate!';
   document.getElementById('msgPurposeAsk').value=config.msgPurposeAsk||'What brings you here today? Tap below!';
   document.getElementById('msgSkinReply').value=config.msgSkinReply||'Great! What specific skin concern can I help you with?';
-  document.getElementById('msgBookingReply').value=config.msgBookingReply||"For booking inquiries, I'll be at AB Clinic starting May 25th! I'll share the reservation details soon.\\n\\nIf you have any skin-related questions, feel free to ask anytime!";
+  document.getElementById('msgBookingReply').value=config.msgBookingReply||"Hey! So I'm at Fine Clinic through April, and then moving to AB Clinic starting June 1st. Unfortunately I won't be able to see patients during May while I'm transitioning — but both clinics have amazing doctors, so feel free to book with them in the meantime!\\n\\nThe reservation system is going to change too — I'll announce all the details once everything is set up! Make sure you're following so you don't miss the update 😊\\n\\nIn the meantime, if you have any skin questions, feel free to ask! I'm happy to help right here";
   document.getElementById('msgBusinessReply').value=config.msgBusinessReply||"Thanks for reaching out! For business inquiries, please hold on — I'll get back to you personally soon 🙏";
   // aiPrompt가 비어있으면 기본값 표시
   if(!document.getElementById('aiPrompt').value) document.getElementById('aiPrompt').value=DEFAULT_PROMPT;
@@ -2303,7 +2325,7 @@ function toggleTheme(){
 // 저장된 테마 복원
 if(localStorage.getItem('drsean_theme')==='light'){document.documentElement.classList.add('light');}
 (function(){const tl=document.getElementById('themeLabel');if(tl)tl.textContent=document.documentElement.classList.contains('light')?'Light':'Dark';})();
-function logout(){localStorage.removeItem('drsean_user');localStorage.removeItem('drsean_name');location.replace('/');}
+function logout(){localStorage.removeItem('drsean_user');localStorage.removeItem('drsean_name');localStorage.removeItem('drsean_auth');location.replace('/');}
 
 // ── Notification Polling ──
 let lastLogCount=0;
