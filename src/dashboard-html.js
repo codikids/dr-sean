@@ -1351,7 +1351,7 @@ async function loadConfig(){
   document.getElementById('msgPurposeAsk').value=config.msgPurposeAsk||'What brings you here today? Tap below!';
   document.getElementById('msgSkinReply').value=config.msgSkinReply||'Great! What specific skin concern can I help you with?';
   document.getElementById('msgBookingReply').value=config.msgBookingReply||"Hey! So I'm at Fine Clinic through April, and then moving to AB Clinic starting June 1st. Unfortunately I won't be able to see patients during May while I'm transitioning — but both clinics have amazing doctors, so feel free to book with them in the meantime!\\n\\nThe reservation system is going to change too — I'll announce all the details once everything is set up! Make sure you're following so you don't miss the update 😊\\n\\nIn the meantime, if you have any skin questions, feel free to ask! I'm happy to help right here";
-  document.getElementById('msgBusinessReply').value=config.msgBusinessReply||"Thanks for reaching out! For business inquiries, please hold on — I'll get back to you personally soon 🙏";
+  document.getElementById('msgBusinessReply').value=config.msgBusinessReply||"Thanks for reaching out! For business inquiries, please email drsean.skin@gmail.com — Dr. Sean will personally get back to you there 🙏";
   // aiPrompt가 비어있으면 기본값 표시
   if(!document.getElementById('aiPrompt').value) document.getElementById('aiPrompt').value=DEFAULT_PROMPT;
   // 국가 버튼

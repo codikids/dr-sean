@@ -102,9 +102,9 @@ export async function handleWebhook(request, env) {
           continue;
         }
 
-        // 봇 일시정지 환자 → 답장 안 보냄 (로그만 기록)
-        if (profile.username && await isPatientPaused(env, profile.username)) {
-          if (!isTestUser) await logMessage(env, { senderId, username: profile.username, received: text, replied: '[Bot paused — waiting for manual reply]', timestamp, tag: 'paused' });
+        // 봇 일시정지 환자 → 답장 안 보냄 (로그만 기록). username 없어도 senderId로 체크.
+        if (await isPatientPaused(env, profile.username, senderId)) {
+          if (!isTestUser) await logMessage(env, { senderId, username: profile.username || '', received: text, replied: '[Bot paused — waiting for manual reply]', timestamp, tag: 'paused' });
           continue;
         }
 

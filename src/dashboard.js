@@ -105,6 +105,7 @@ export async function handleDashboardAPI(request, env, path) {
           env.KV.delete(`purpose:${senderId}`),
           env.KV.delete(`awaiting_country:${senderId}`),
           env.KV.delete(`awaiting_concern:${senderId}`),
+          env.KV.delete(`paused:${senderId}`),
         ]);
       }
       return json({ ok: true }, 200, cors);

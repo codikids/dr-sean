@@ -300,14 +300,14 @@ export async function generateReply(text, senderId, env, username) {
       if (matched === 'business') {
         const bizReply = config.msgBusinessReply || "Thanks for reaching out! For business inquiries, please email drsean.skin@gmail.com — Dr. Sean will personally get back to you there 🙏";
         metadata.tag = 'business';
-        await markWantsDrSean(env, username);
+        await markWantsDrSean(env, username, senderId);
         await saveConversation(env, senderId, [...conversation, { role: 'user', text }, { role: 'assistant', text: bizReply }]);
         return { reply: bizReply, metadata };
       }
       if (matched === 'booking') {
         const bookReply = config.msgBookingReply || "Hey! So for bookings — I'm actually moving to AB Clinic starting in June, so the reservation system is going to change. I'll announce all the details once everything is set up!\n\nMake sure you're following so you don't miss the update. In the meantime, if you have any skin questions, feel free to ask! I'm happy to help right here";
         metadata.tag = 'booking';
-        await markWantsDrSean(env, username);
+        await markWantsDrSean(env, username, senderId);
         await saveConversation(env, senderId, [...conversation, { role: 'user', text }, { role: 'assistant', text: bookReply }]);
         return { reply: bookReply, metadata };
       }
@@ -322,14 +322,14 @@ export async function generateReply(text, senderId, env, username) {
     if (purposeMatch === 'business') {
       const bizReply = config.msgBusinessReply || "Thanks for reaching out! For business inquiries, please email drsean.skin@gmail.com — Dr. Sean will personally get back to you there 🙏";
       metadata.tag = 'business';
-      await markWantsDrSean(env, username);
+      await markWantsDrSean(env, username, senderId);
       await saveConversation(env, senderId, [...conversation, { role: 'user', text }, { role: 'assistant', text: bizReply }]);
       return { reply: bizReply, metadata };
     }
     if (purposeMatch === 'booking') {
       const bookReply = config.msgBookingReply || "Hey! So for bookings — I'm actually moving to AB Clinic starting in June, so the reservation system is going to change. I'll announce all the details once everything is set up!\n\nMake sure you're following so you don't miss the update. In the meantime, if you have any skin questions, feel free to ask! I'm happy to help right here";
       metadata.tag = 'booking';
-      await markWantsDrSean(env, username);
+      await markWantsDrSean(env, username, senderId);
       await saveConversation(env, senderId, [...conversation, { role: 'user', text }, { role: 'assistant', text: bookReply }]);
       return { reply: bookReply, metadata };
     }
@@ -384,7 +384,7 @@ export async function generateReply(text, senderId, env, username) {
     await env.KV.delete(`awaiting_concern:${senderId}`);
     const videoLink = await findFeedVideo(env, displayName) || await findFeedVideo(env, typed) || await getLatestFeedVideo(env);
     const concernReply = buildConcernWaitReply(displayName, videoLink, config);
-    await markWantsDrSean(env, username);
+    await markWantsDrSean(env, username, senderId);
     await saveConversation(env, senderId, [...conversation, { role: 'user', text }, { role: 'assistant', text: concernReply }]);
     return { reply: concernReply, metadata };
   }
@@ -415,7 +415,7 @@ export async function generateReply(text, senderId, env, username) {
       await env.KV.put(`concern:${senderId}`, matched, { expirationTtl: 60 * 60 * 24 * 90 });
       const videoLink = await findFeedVideo(env, matched) || await getLatestFeedVideo(env);
       const concernReply = buildConcernWaitReply(matched, videoLink, config);
-      await markWantsDrSean(env, username);
+      await markWantsDrSean(env, username, senderId);
       await saveConversation(env, senderId, [...conversation, { role: 'user', text }, { role: 'assistant', text: concernReply }]);
       return { reply: concernReply, metadata };
     }
@@ -589,8 +589,11 @@ async function getLatestFeedVideo(env) {
   } catch(e) { return null; }
 }
 
-/** Wants Dr. Sean 리스트 등록 + 봇 pause */
-async function markWantsDrSean(env, username) {
+/** Wants Dr. Sean 리스트 등록 + 봇 pause (username 없으면 senderId로라도 pause) */
+async function markWantsDrSean(env, username, senderId) {
+  if (senderId) {
+    await env.KV.put(`paused:${senderId}`, '1', { expirationTtl: 60 * 60 * 24 * 180 });
+  }
   if (!username) return;
   const pd = await getPatientData(env);
   if (!pd[username]) pd[username] = {};

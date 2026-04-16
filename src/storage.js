@@ -122,8 +122,17 @@ export async function savePatientData(env, data) {
   } catch(e) { console.error('savePatientData failed:', e); }
 }
 
-/** 특정 환자가 봇 일시정지 상태인지 확인 */
-export async function isPatientPaused(env, username) {
-  const data = await getPatientData(env);
-  return data[username]?.paused || false;
+/** 특정 환자가 봇 일시정지 상태인지 확인 (username 또는 senderId 중 하나라도 paused면 true) */
+export async function isPatientPaused(env, username, senderId) {
+  if (username) {
+    const data = await getPatientData(env);
+    // patientData에 기록이 있으면 그게 진실(대시보드에서 resume 가능) — senderId fallback 무시
+    if (username in data) return !!data[username].paused;
+  }
+  // username 없거나 patientData 기록 없을 때만 senderId fallback
+  if (senderId) {
+    const v = await env.KV.get(`paused:${senderId}`);
+    if (v === '1') return true;
+  }
+  return false;
 }
