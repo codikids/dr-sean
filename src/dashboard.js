@@ -221,6 +221,120 @@ export async function handleDashboardAPI(request, env, path) {
       return json(stats, 200, cors);
     }
 
+    // POST /api/ai-video-recommendations — AI가 국가/고민 분석해서 인스타 영상 아이디어 추천
+    if (path === '/api/ai-video-recommendations' && request.method === 'POST') {
+      const body = await request.json();
+      const { countries = {}, concerns = {}, force = false } = body;
+
+      // 24시간 캐시 — force=false면 캐시만 확인, 없으면 비어있는 응답 반환 (API 호출 안함)
+      const cacheKey = 'cache:video_recs';
+      if (!force) {
+        const cached = await env.KV.get(cacheKey, 'json');
+        if (cached && cached._cachedAt && (Date.now() - cached._cachedAt) < 86400000) {
+          return json({ ...cached, cached: true }, 200, cors);
+        }
+        return json({ ideas: null, cached: false, empty: true }, 200, cors);
+      }
+
+      const cfg = await getConfig(env);
+      const apiKey = cfg.claudeApiKey || env.CLAUDE_API_KEY;
+      const model = cfg.claudeModel || 'claude-haiku-4-5-20251001';
+      if (!apiKey) return json({ error: 'Claude API key not configured in Settings' }, 400, cors);
+
+      // 월간 한도 체크
+      const month = new Date().toISOString().slice(0, 7);
+      const usage = JSON.parse(await env.KV.get(`ai_usage:${month}`) || '{"requests":0,"inputTokens":0,"outputTokens":0,"cost":0}');
+      if (cfg.claudeMonthlyLimit && usage.cost >= cfg.claudeMonthlyLimit) {
+        return json({ error: 'Monthly AI limit reached' }, 429, cors);
+      }
+
+      const topCountries = Object.entries(countries).sort((a, b) => b[1] - a[1]).slice(0, 8);
+      const topConcerns = Object.entries(concerns).sort((a, b) => b[1] - a[1]).slice(0, 8);
+      if (!topCountries.length && !topConcerns.length) {
+        return json({ error: 'Not enough patient data to analyze yet.' }, 400, cors);
+      }
+
+      const prompt = `You are a social media strategist for Dr. Sean, a Korean dermatologist attracting international patients via Instagram DMs.
+
+Real patient data from recent DM inquiries:
+
+Top patient countries:
+${topCountries.map(([c, n]) => `- ${c}: ${n} patients`).join('\n') || '- (none yet)'}
+
+Top skin concerns mentioned:
+${topConcerns.map(([c, n]) => `- ${c}: ${n} mentions`).join('\n') || '- (none yet)'}
+
+Suggest 5 Instagram Reels video ideas that will attract MORE patients like these. Think about:
+- Skin concerns trending in the data that should be addressed on camera
+- Cultural/regional dynamics from the top countries (K-beauty interest, Western anti-aging, Southeast Asian skin type concerns, medical tourism, etc.)
+- What content would make viewers actually DM the clinic
+
+For each idea return:
+- title: catchy Instagram Reel title in English, max 60 chars
+- hook: opening 2–3 second line viewers see first, max 80 chars
+- target: which country/concern segment it targets
+- format: Reel type (Before/After, Tutorial, Mythbuster, Day-in-life, Treatment explainer, Patient story, etc.)
+- reason: 1 sentence explaining why this will work, grounded in the data above
+
+Return ONLY a JSON array. No markdown, no code fences, no extra text.
+[{"title":"...","hook":"...","target":"...","format":"...","reason":"..."}]`;
+
+      try {
+        const res = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01',
+          },
+          body: JSON.stringify({
+            model,
+            max_tokens: 1500,
+            messages: [{ role: 'user', content: prompt }],
+          }),
+        });
+
+        if (!res.ok) {
+          const errText = await res.text();
+          console.error('Claude API error:', errText);
+          return json({ error: 'AI request failed' }, 500, cors);
+        }
+
+        const data = await res.json();
+        let text = (data.content?.[0]?.text || '').trim();
+        text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+
+        let ideas;
+        try {
+          ideas = JSON.parse(text);
+        } catch (e) {
+          const match = text.match(/\[[\s\S]*\]/);
+          if (match) ideas = JSON.parse(match[0]);
+          else return json({ error: 'AI returned invalid format' }, 500, cors);
+        }
+        if (!Array.isArray(ideas)) return json({ error: 'AI returned invalid format' }, 500, cors);
+
+        // 토큰 사용량 추적
+        const inTok = data.usage?.input_tokens || 0;
+        const outTok = data.usage?.output_tokens || 0;
+        const prices = { 'claude-haiku-4-5-20251001': [0.80, 4], 'claude-sonnet-4-6': [3, 15], 'claude-opus-4-6': [15, 75] };
+        const [inPrice, outPrice] = prices[model] || [0.80, 4];
+        const cost = (inTok * inPrice / 1e6) + (outTok * outPrice / 1e6);
+        usage.requests++;
+        usage.inputTokens += inTok;
+        usage.outputTokens += outTok;
+        usage.cost = Math.round((usage.cost + cost) * 1e6) / 1e6;
+        await env.KV.put(`ai_usage:${month}`, JSON.stringify(usage));
+
+        const result = { ideas, _cachedAt: Date.now(), model };
+        await env.KV.put(cacheKey, JSON.stringify(result), { expirationTtl: 172800 });
+        return json({ ...result, cached: false }, 200, cors);
+      } catch (err) {
+        console.error('Video recommendations error:', err);
+        return json({ error: err.message || 'Unknown error' }, 500, cors);
+      }
+    }
+
     return json({ error: 'Not Found' }, 404, cors);
   } catch (err) {
     console.error('API error:', err);

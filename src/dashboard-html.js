@@ -1582,6 +1582,20 @@ async function loadInsights(){
       </div>\`;
     }
 
+    // 2.6. AI Video Ideas — 국가/고민 기반 인스타 영상 추천 (Map 아래)
+    window._insightsData={countries,concerns};
+    html+=\`<div id="videoRecsCard" style="background:linear-gradient(135deg,rgba(232,121,249,0.08),rgba(169,132,255,0.06));border:1px solid rgba(232,121,249,0.2);border-radius:var(--radius);padding:16px;margin-top:10px;">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
+        <div style="width:20px;height:20px;border-radius:6px;background:rgba(232,121,249,0.15);display:flex;align-items:center;justify-content:center;">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#E879F9" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+        </div>
+        <span style="font-size:11px;font-weight:700;color:#E879F9;">AI VIDEO IDEAS</span>
+        <span style="font-size:9px;color:var(--text-tertiary);margin-left:auto;">Based on your patients</span>
+      </div>
+      <div id="videoRecsBody" style="font-size:11px;color:var(--text-tertiary);text-align:center;padding:20px 0;">Loading...</div>
+    </div>\`;
+    setTimeout(loadVideoRecs,50);
+
     // 3. Needs Reply — 봇 꺼진 상태에서 대기 중인 환자
     const needsReply=[];
     const needsReplySet=new Set();
@@ -1722,6 +1736,62 @@ function toggleMore(id,total,color){
   const btn=el.nextElementSibling;
   if(el.style.display==='none'){el.style.display='';btn.textContent='Show less';}
   else{el.style.display='none';btn.textContent='+'+total+' more...';}
+}
+
+// ── AI Video Recommendations ──
+async function loadVideoRecs(force){
+  const body=document.getElementById('videoRecsBody');
+  if(!body)return;
+  const data=window._insightsData||{countries:{},concerns:{}};
+  if(!Object.keys(data.countries).length&&!Object.keys(data.concerns).length){
+    body.innerHTML='<div style="padding:10px 0;">Not enough patient data yet.</div>';
+    return;
+  }
+  if(force){body.innerHTML='<div style="padding:20px 0;color:var(--text-tertiary);">✨ Generating ideas with Claude...</div>';}
+  try{
+    const r=await fetch('/api/ai-video-recommendations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({countries:data.countries,concerns:data.concerns,force:!!force})});
+    const res=await r.json();
+    if(!r.ok){
+      body.innerHTML='<div style="padding:10px 0;color:var(--amber);">'+esc(res.error||'Failed to load')+'</div>'
+        +(res.error&&res.error.includes('API key')?'<div style="margin-top:8px;"><button onclick="switchTab(\\'settings\\',null)" style="font-size:10px;padding:6px 12px;border-radius:6px;background:rgba(232,121,249,0.15);color:#E879F9;border:none;cursor:pointer;font-weight:600;">Open Settings</button></div>':'');
+      return;
+    }
+    if(res.empty||!res.ideas){
+      body.innerHTML='<div style="padding:4px 0 12px;color:var(--text-secondary);line-height:1.6;">Let AI suggest Instagram Reels that would attract more patients like yours, based on top countries and skin concerns.</div>'
+        +'<button onclick="loadVideoRecs(true)" style="width:100%;padding:10px;border-radius:8px;background:linear-gradient(135deg,#E879F9,#A984FF);color:#fff;border:none;cursor:pointer;font-weight:700;font-size:11px;letter-spacing:0.3px;">✨ Generate Ideas</button>';
+      return;
+    }
+    renderVideoRecs(res.ideas,res._cachedAt,res.cached);
+  }catch(e){
+    console.error('video recs error',e);
+    body.innerHTML='<div style="padding:10px 0;color:var(--amber);">Failed to load. Try again.</div>';
+  }
+}
+function renderVideoRecs(ideas,cachedAt,wasCached){
+  const body=document.getElementById('videoRecsBody');
+  if(!body)return;
+  const ageHr=cachedAt?Math.round((Date.now()-cachedAt)/3600000):0;
+  const ageStr=ageHr<1?'just now':ageHr<24?ageHr+'h ago':Math.round(ageHr/24)+'d ago';
+  const cards=ideas.map((x,i)=>{
+    const num=(i+1).toString().padStart(2,'0');
+    return'<div style="border-top:1px solid var(--border);padding:12px 0;">'
+      +'<div style="display:flex;align-items:flex-start;gap:10px;">'
+      +'<div style="width:24px;height:24px;border-radius:6px;background:rgba(232,121,249,0.12);color:#E879F9;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;flex-shrink:0;">'+num+'</div>'
+      +'<div style="min-width:0;flex:1;">'
+      +'<div style="font-size:12px;font-weight:700;color:var(--text);line-height:1.35;margin-bottom:4px;">'+esc(x.title||'')+'</div>'
+      +(x.hook?'<div style="font-size:10px;color:var(--text-secondary);font-style:italic;line-height:1.5;margin-bottom:6px;">"'+esc(x.hook)+'"</div>':'')
+      +'<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;">'
+      +(x.format?'<span style="font-size:9px;padding:2px 7px;border-radius:20px;background:rgba(169,132,255,0.15);color:#A984FF;font-weight:600;">'+esc(x.format)+'</span>':'')
+      +(x.target?'<span style="font-size:9px;padding:2px 7px;border-radius:20px;background:rgba(91,141,239,0.15);color:var(--accent);font-weight:600;">'+esc(x.target)+'</span>':'')
+      +'</div>'
+      +(x.reason?'<div style="font-size:10px;color:var(--text-tertiary);line-height:1.5;">'+esc(x.reason)+'</div>':'')
+      +'</div></div></div>';
+  }).join('');
+  body.innerHTML='<div style="text-align:left;">'+cards
+    +'<div style="display:flex;align-items:center;justify-content:space-between;padding-top:10px;margin-top:4px;border-top:1px solid var(--border);">'
+    +'<span style="font-size:9px;color:var(--text-tertiary);">Generated '+ageStr+'</span>'
+    +'<button onclick="loadVideoRecs(true)" style="font-size:10px;padding:5px 10px;border-radius:6px;background:rgba(232,121,249,0.12);color:#E879F9;border:none;cursor:pointer;font-weight:600;">↻ Regenerate</button>'
+    +'</div></div>';
 }
 async function dismissHumanReq(username){
   if(!patientData[username])return;
